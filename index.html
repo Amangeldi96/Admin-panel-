@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Toktogul Reklama | Bento Glass Modal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+       <div class="bento-wrapper">
+        <!-- Bento Header Component -->
+        <div class="bento-header">
+            <div class="bento-card brand-box">
+                <div class="brand-icon"><i class="fa-solid fa-cube"></i></div>
+                <div class="brand-info">
+                    <h1>Админ панель</h1>
+                    <p>Токтогул реклама</p>
+                </div>
+            </div>
+
+            <div class="bento-controls-row">
+                <div class="bento-card stat-pill">
+                    <span>Күтүүдө</span>
+                    <span id="counter-badge">...</span>
+                </div>
+                <!-- Компакттуу узун тумблер -->
+                <div class="toggle" id="toggle">
+                    <div class="knob" id="knob"><span id="icon">☀️</span></div>
+                    <span class="toggle-text text-light" id="mode-light">Жарык</span>
+                    <span class="toggle-text text-dark" id="mode-dark">Караңгы</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bento Dynamic Feed Container -->
+        <div id="ads-container">
+            <div class="bento-card bento-empty">
+                <i class="fa-solid fa-spinner fa-spin" style="color: #6366f1;"></i>
+                <p>Маалыматтар жүктөлүүдө...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Preview Modal Component -->
+    <div class="image-modal" id="imageModal" onclick="closeImageModal()">
+        <div class="modal-content-wrapper" onclick="event.stopPropagation()">
+            <button class="modal-close-btn" onclick="closeImageModal()"><i class="fa-solid fa-xmark"></i></button>
+            <img id="modalImageElement" src="" alt="Zoomed Image">
+        </div>
+    </div>
+  
+    <script type="module" src="script.js"></script>
+</body>
+</html>
