@@ -19,6 +19,18 @@ const auth = getAuth(app);
 const container = document.getElementById("ads-container");
 const badge = document.getElementById("counter-badge");
 
+// ImgBB же башка шилтемелерди түз (direct image link) сүрөт форматына айландыруу
+function fixImageUrl(url) {
+    if (!url) return "";
+    let cleanUrl = url.trim();
+    // Эгер ibb.co/code болсо, аны түз сүрөт серверине багыттоо аракети
+    if (cleanUrl.includes("ibb.co/") && !cleanUrl.includes("i.ibb.co/")) {
+        // Ылайыктуу болгон учурда i.ibb.co шилтемесине айландырабыз
+        cleanUrl = cleanUrl.replace("ibb.co/", "i.ibb.co/") + ".jpg";
+    }
+    return cleanUrl;
+}
+
 // Модалканы башкаруу функциялары
 window.openImageModal = function(url) {
     const modal = document.getElementById("imageModal");
@@ -26,6 +38,9 @@ window.openImageModal = function(url) {
     if (modal && modalImg) {
         modalImg.src = url;
         modal.classList.add("active");
+    } else {
+        // Эгер модалка табылбаса, жаңы вкладкада ачабыз
+        window.open(url, "_blank");
     }
 }
 
@@ -38,7 +53,6 @@ window.closeImageModal = function() {
 
 async function fetchPendingAds() {
     try {
-        // React Native тиркемеден чекти VIP сурам катары vip_requests коллекциясына жөнөтөт
         const querySnapshot = await getDocs(collection(db, "vip_requests"));
         let html = "";
         let count = 0;
@@ -46,49 +60,65 @@ async function fetchPendingAds() {
         querySnapshot.forEach((document) => {
             const req = document.data();
             
-            // Текшерүүнү күтүп жаткан сурамдарды гана алабыз
             if (req.status === "pending" || req.status === "pending_approval") {
                 count++;
                 
-                // Чек сүрөтү же жарнама сүрөтү
-                const receiptImage = req.receiptUrl || req.paymentReceiptImage || "";
-                const adImage = (Array.isArray(req.images) ? req.images[0] : req.images) || "";
+                // Чек жана жарнама сүрөтүнүн шилтемелерин даярдоо
+                const rawReceipt = req.receiptUrl || req.paymentReceiptImage || req.receipt || "";
+                const receiptImage = fixImageUrl(rawReceipt);
+                
+                const rawAdImg = (Array.isArray(req.images) ? req.images[0] : req.images) || req.image || "";
+                const adImage = fixImageUrl(rawAdImg);
+
                 const days = req.requestedDays || req.vipDays || 0;
                 const price = req.totalPrice || req.vipTotalCost || 0;
                 const adId = req.adId || "";
 
                 html += `
                     <div class="bento-card bento-ad-item" id="card-${document.id}">
-                        <div class="media-preview-cluster">
+                        <div class="media-preview-cluster" style="display: flex; gap: 8px; flex-wrap: wrap;">
                             ${adImage ? `
-                                <div class="media-thumb" onclick="openImageModal('${adImage}')">
-                                    <img src="${adImage}" alt="Ad">
+                                <div class="media-thumb" onclick="openImageModal('${adImage}')" style="cursor:pointer;">
+                                    <img src="${adImage}" alt="Ad" onError="this.onerror=null; this.src='https://via.placeholder.com/150?text=Сүрөт+ката';" style="width:70px; height:70px; object-fit:cover; border-radius:8px;">
                                     <span>Жарнама</span>
                                 </div>
                             ` : ''}
 
                             ${receiptImage ? `
-                                <div class="media-thumb" onclick="openImageModal('${receiptImage}')">
-                                    <img src="${receiptImage}" alt="Receipt">
-                                    <span>Чек</span>
+                                <div class="media-thumb" style="cursor:pointer; position:relative;">
+                                    <img src="${receiptImage}" 
+                                         alt="Чек" 
+                                         onclick="openImageModal('${rawReceipt}')"
+                                         onError="this.style.display='none'; document.getElementById('fallback-link-${document.id}').style.display='block';" 
+                                         style="width:70px; height:70px; object-fit:cover; border-radius:8px; border:1px solid #a855f7;">
+                                    <span onclick="openImageModal('${rawReceipt}')">Чек</span>
+                                    
+                                    <!-- Эгер сүрөт сырттан жүктөлбөй калса (CORS же туура эмес формат болсо) ушул шилтеме чыгат -->
+                                    <a id="fallback-link-${document.id}" 
+                                       href="${rawReceipt}" 
+                                       target="_blank" 
+                                       style="display:none; font-size:11px; color:#3b82f6; text-decoration:underline; word-break:break-all; margin-top:4px;">
+                                       🔗 Чеги ачуу
+                                    </a>
                                 </div>
-                            ` : '<div style="font-size:10px; color:#ef4444; display:flex; align-items:center;">Чек жок</div>'}
+                            ` : '<div style="font-size:11px; color:#ef4444; display:flex; align-items:center;">Чек жок</div>'}
                         </div>
 
-                        <div class="ad-details-stack">
+                        <div class="ad-details-stack" style="margin-top:10px;">
                             <div class="ad-link-row">
-                                <span style="font-size: 12px; font-weight: 600; color: #a855f7;">
-                                    ${req.adTitle ? req.adTitle : (adId ? 'ID: ' + adId : 'Жарнама сурамы')}
+                                <span style="font-size: 13px; font-weight: 700; color: #a855f7;">
+                                    ${req.adTitle ? req.adTitle : (adId ? 'Жарнама ID: ' + adId : 'VIP Өтүнүч')}
                                 </span>
                             </div>
-                            <div class="ad-meta-tags">
-                                <span>Колдонуучу: <strong>${req.userEmail || '—'}</strong></span>
+                            <div class="ad-meta-tags" style="display:flex; flex-direction:column; gap:2px; font-size:12px;">
+                                <span>Email: <strong>${req.userEmail || 'Көрсөтүлгөн эмес'}</strong></span>
                                 <span>Мөөнөтү: <strong class="dynamic-text">${days} күн</strong></span>
                                 <span>Баасы: <strong class="dynamic-text">${price} сом</strong></span>
+                                ${rawReceipt ? `<span style="font-size:10px; color:#6b7280; word-break:break-all;">Шилтеме: <a href="${rawReceipt}" target="_blank" style="color:#3b82f6;">${rawReceipt}</a></span>` : ''}
                             </div>
                         </div>
 
-                        <div class="bento-actions">
+                        <div class="bento-actions" style="margin-top:10px; display:flex; gap:10px;">
                             <button class="bento-btn btn-yes" onclick="approveAd('${document.id}', '${adId}', ${days})" title="Ырастоо">
                                 <i class="fa-solid fa-check"></i>
                             </button>
@@ -126,7 +156,6 @@ window.approveAd = async function(requestId, adId, extraDays) {
         const nowMs = Date.now();
         const addedMs = Number(extraDays) * 24 * 60 * 60 * 1000;
 
-        // 1. Негизги жарнаманын (vip_ads) мөөнөтүн узартабыз жана активдештиребиз
         if (adId) {
             const adRef = doc(db, "vip_ads", adId);
             await updateDoc(adRef, { 
@@ -135,11 +164,9 @@ window.approveAd = async function(requestId, adId, extraDays) {
             });
         }
 
-        // 2. VIP сурамдын статусун "approved" кылабыз
         const reqRef = doc(db, "vip_requests", requestId);
         await updateDoc(reqRef, { status: "approved" });
         
-        // 3. Экрандагы карточканы анимация менен өчүрөбүз
         const card = document.getElementById(`card-${requestId}`);
         if (card) {
             card.style.transform = 'scale(0.95)';
