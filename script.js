@@ -23,35 +23,39 @@ const badge = document.getElementById("counter-badge");
 window.openImageModal = function(url) {
     const modal = document.getElementById("imageModal");
     const modalImg = document.getElementById("modalImageElement");
-    modalImg.src = url;
-    modal.classList.add("active");
+    if (modal && modalImg) {
+        modalImg.src = url;
+        modal.classList.add("active");
+    }
 }
 
 window.closeImageModal = function() {
     const modal = document.getElementById("imageModal");
-    modal.classList.remove("active");
+    if (modal) {
+        modal.classList.remove("active");
+    }
 }
 
 async function fetchPendingAds() {
     try {
-        const querySnapshot = await getDocs(collection(db, "vip_ads"));
+        // React Native тиркемеден чекти VIP сурам катары vip_requests коллекциясына жөнөтөт
+        const querySnapshot = await getDocs(collection(db, "vip_requests"));
         let html = "";
         let count = 0;
 
         querySnapshot.forEach((document) => {
-            const ad = document.data();
+            const req = document.data();
             
-            if (ad.status === "pending_approval") {
+            // Текшерүүнү күтүп жаткан сурамдарды гана алабыз
+            if (req.status === "pending" || req.status === "pending_approval") {
                 count++;
                 
-                let adImage = "";
-                if (Array.isArray(ad.images)) {
-                    adImage = ad.images[0];
-                } else if (typeof ad.images === "string") {
-                    adImage = ad.images;
-                }
-
-                const receiptImage = ad.paymentReceiptImage || "";
+                // Чек сүрөтү же жарнама сүрөтү
+                const receiptImage = req.receiptUrl || req.paymentReceiptImage || "";
+                const adImage = (Array.isArray(req.images) ? req.images[0] : req.images) || "";
+                const days = req.requestedDays || req.vipDays || 0;
+                const price = req.totalPrice || req.vipTotalCost || 0;
+                const adId = req.adId || "";
 
                 html += `
                     <div class="bento-card bento-ad-item" id="card-${document.id}">
@@ -62,7 +66,7 @@ async function fetchPendingAds() {
                                     <span>Жарнама</span>
                                 </div>
                             ` : ''}
-                            
+
                             ${receiptImage ? `
                                 <div class="media-thumb" onclick="openImageModal('${receiptImage}')">
                                     <img src="${receiptImage}" alt="Receipt">
@@ -73,18 +77,19 @@ async function fetchPendingAds() {
 
                         <div class="ad-details-stack">
                             <div class="ad-link-row">
-                                <a href="${ad.vipLink || '#'}" target="_blank">
-                                    <i class="fa-solid fa-link" style="font-size: 11px;"></i> ${ad.vipLink || 'Шилтеме жок'}
-                                </a>
+                                <span style="font-size: 12px; font-weight: 600; color: #a855f7;">
+                                    ${req.adTitle ? req.adTitle : (adId ? 'ID: ' + adId : 'Жарнама сурамы')}
+                                </span>
                             </div>
                             <div class="ad-meta-tags">
-                                <span>Мөөнөтү: <strong class="dynamic-text">${ad.vipDays || 0} күн</strong></span>
-                                <span>Баасы: <strong class="dynamic-text">${ad.vipTotalCost || 0} сом</strong></span>
+                                <span>Колдонуучу: <strong>${req.userEmail || '—'}</strong></span>
+                                <span>Мөөнөтү: <strong class="dynamic-text">${days} күн</strong></span>
+                                <span>Баасы: <strong class="dynamic-text">${price} сом</strong></span>
                             </div>
                         </div>
 
                         <div class="bento-actions">
-                            <button class="bento-btn btn-yes" onclick="approveAd('${document.id}')" title="Ырастоо">
+                            <button class="bento-btn btn-yes" onclick="approveAd('${document.id}', '${adId}', ${days})" title="Ырастоо">
                                 <i class="fa-solid fa-check"></i>
                             </button>
                             <button class="bento-btn btn-no" onclick="rejectAd('${document.id}')" title="Четке кагуу">
@@ -110,40 +115,60 @@ async function fetchPendingAds() {
         updateThemeColors(currentProgress);
 
     } catch (error) {
-        console.error("Ката:", error);
+        console.error("Ката кетти:", error);
         container.innerHTML = `<div class="bento-card bento-empty" style="color: #ef4444;">Ката кетти: ${error.message}</div>`;
     }
 }
 
-window.approveAd = async function(id) {
+// Ырастоо функциясы
+window.approveAd = async function(requestId, adId, extraDays) {
     try {
-        const adRef = doc(db, "vip_ads", id);
-        await updateDoc(adRef, { status: "active" });
-        
-        const card = document.getElementById(`card-${id}`);
-        card.style.transform = 'scale(0.95)';
-        card.style.opacity = '0';
-        setTimeout(() => {
-            card.remove();
-            checkEmptyState();
-        }, 300);
-    } catch (e) {
-        alert("Ката кетти: " + e.message);
-    }
-}
+        const nowMs = Date.now();
+        const addedMs = Number(extraDays) * 24 * 60 * 60 * 1000;
 
-window.rejectAd = async function(id) {
-    if (confirm("Бул жарнаманы четке кагып өчүргүңүз келеби?")) {
-        try {
-            await deleteDoc(doc(db, "vip_ads", id));
-            
-            const card = document.getElementById(`card-${id}`);
+        // 1. Негизги жарнаманын (vip_ads) мөөнөтүн узартабыз жана активдештиребиз
+        if (adId) {
+            const adRef = doc(db, "vip_ads", adId);
+            await updateDoc(adRef, { 
+                expiresAt: nowMs + addedMs,
+                status: "active" 
+            });
+        }
+
+        // 2. VIP сурамдын статусун "approved" кылабыз
+        const reqRef = doc(db, "vip_requests", requestId);
+        await updateDoc(reqRef, { status: "approved" });
+        
+        // 3. Экрандагы карточканы анимация менен өчүрөбүз
+        const card = document.getElementById(`card-${requestId}`);
+        if (card) {
             card.style.transform = 'scale(0.95)';
             card.style.opacity = '0';
             setTimeout(() => {
                 card.remove();
                 checkEmptyState();
             }, 300);
+        }
+    } catch (e) {
+        alert("Ырастоодо ката кетти: " + e.message);
+    }
+}
+
+// Четке кагуу функциясы
+window.rejectAd = async function(requestId) {
+    if (confirm("Бул жарнама сурамын четке кагып өчүргүңүз келеби?")) {
+        try {
+            await deleteDoc(doc(db, "vip_requests", requestId));
+            
+            const card = document.getElementById(`card-${requestId}`);
+            if (card) {
+                card.style.transform = 'scale(0.95)';
+                card.style.opacity = '0';
+                setTimeout(() => {
+                    card.remove();
+                    checkEmptyState();
+                }, 300);
+            }
         } catch (e) {
             alert("Ката кетти: " + e.message);
         }
@@ -178,7 +203,7 @@ let isDragging = false;
 let startX = 0;
 let currentX = 0;
 const minX = 5;
-const maxX = toggle.clientWidth - knob.clientWidth - 5;
+const maxX = toggle ? (toggle.clientWidth - (knob ? knob.clientWidth : 0) - 5) : 0;
 let isDark = false;
 let currentProgress = 0;
 
@@ -224,18 +249,22 @@ function updateThemeColors(progress) {
         }
     });
 
-    const toggleR = Math.round(240 + (35 - 240) * progress);
-    const toggleG = Math.round(240 + (35 - 240) * progress);
-    const toggleB = Math.round(240 + (35 - 240) * progress);
-    toggle.style.background = `linear-gradient(135deg, rgba(${toggleR}, ${toggleG}, ${toggleB}, ${0.7 - 0.2 * progress}), rgba(${toggleR - 20}, ${toggleG - 20}, ${toggleB - 20}, ${0.5 + 0.1 * progress}))`;
+    if (toggle && knob) {
+        const toggleR = Math.round(240 + (35 - 240) * progress);
+        const toggleG = Math.round(240 + (35 - 240) * progress);
+        const toggleB = Math.round(240 + (35 - 240) * progress);
+        toggle.style.background = `linear-gradient(135deg, rgba(${toggleR}, ${toggleG}, ${toggleB}, ${0.7 - 0.2 * progress}), rgba(${toggleR - 20}, ${toggleG - 20}, ${toggleB - 20}, ${0.5 + 0.1 * progress}))`;
 
-    const knobR = Math.round(255 + (50 - 255) * progress);
-    const knobG = Math.round(255 + (50 - 255) * progress);
-    const knobB = Math.round(255 + (50 - 255) * progress);
-    knob.style.background = `linear-gradient(135deg, rgba(${knobR}, ${knobG}, ${knobB}, 0.95), rgba(${knobR - 35}, ${knobG - 35}, ${knobB - 35}, 0.85))`;
+        const knobR = Math.round(255 + (50 - 255) * progress);
+        const knobG = Math.round(255 + (50 - 255) * progress);
+        const knobB = Math.round(255 + (50 - 255) * progress);
+        knob.style.background = `linear-gradient(135deg, rgba(${knobR}, ${knobG}, ${knobB}, 0.95), rgba(${knobR - 35}, ${knobG - 35}, ${knobB - 35}, 0.85))`;
+    }
 }
 
 function updatePositions(pos, animate = false) {
+    if (!toggle || !knob) return;
+
     if (animate) {
         knob.style.transition = 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
         body.style.transition = 'background-color 0.3s ease-out';
@@ -245,33 +274,38 @@ function updatePositions(pos, animate = false) {
     }
 
     knob.style.left = pos + 'px';
-    let progress = (pos - minX) / (maxX - minX);
+    let progress = (pos - minX) / (maxX - minX || 1);
     updateThemeColors(progress);
 
-    if (progress > 0.5) {
-        if (icon.textContent !== '🌙') {
-            icon.style.transform = 'scale(0) rotate(180deg)';
-            setTimeout(() => {
-                icon.textContent = '🌙';
-                icon.style.transform = 'scale(1) rotate(360deg)';
-            }, 150);
-        }
-    } else {
-        if (icon.textContent !== '☀️') {
-            icon.style.transform = 'scale(0) rotate(-180deg)';
-            setTimeout(() => {
-                icon.textContent = '☀️';
-                icon.style.transform = 'scale(1) rotate(0deg)';
-            }, 150);
+    if (icon) {
+        if (progress > 0.5) {
+            if (icon.textContent !== '🌙') {
+                icon.style.transform = 'scale(0) rotate(180deg)';
+                setTimeout(() => {
+                    icon.textContent = '🌙';
+                    icon.style.transform = 'scale(1) rotate(360deg)';
+                }, 150);
+            }
+        } else {
+            if (icon.textContent !== '☀️') {
+                icon.style.transform = 'scale(0) rotate(-180deg)';
+                setTimeout(() => {
+                    icon.textContent = '☀️';
+                    icon.style.transform = 'scale(1) rotate(0deg)';
+                }, 150);
+            }
         }
     }
 
     let textOffset = progress * 100;
-    lightText.style.transform = `translateX(${textOffset}px)`;
-    lightText.style.opacity = 1 - progress;
-
-    darkText.style.transform = `translateX(${textOffset}px)`;
-    darkText.style.opacity = progress;
+    if (lightText) {
+        lightText.style.transform = `translateX(${textOffset}px)`;
+        lightText.style.opacity = 1 - progress;
+    }
+    if (darkText) {
+        darkText.style.transform = `translateX(${textOffset}px)`;
+        darkText.style.opacity = progress;
+    }
 }
 
 function startDrag(e) {
@@ -302,21 +336,23 @@ function stopDrag() {
     updatePositions(currentX, true);
 }
 
-toggle.addEventListener('mousedown', startDrag);
-window.addEventListener('mousemove', onDrag);
-window.addEventListener('mouseup', stopDrag);
+if (toggle) {
+    toggle.addEventListener('mousedown', startDrag);
+    window.addEventListener('mousemove', onDrag);
+    window.addEventListener('mouseup', stopDrag);
 
-toggle.addEventListener('touchstart', startDrag);
-window.addEventListener('touchmove', onDrag);
-window.addEventListener('touchend', stopDrag);
+    toggle.addEventListener('touchstart', startDrag);
+    window.addEventListener('touchmove', onDrag);
+    window.addEventListener('touchend', stopDrag);
 
-toggle.addEventListener('click', (e) => {
-    if (Math.abs(currentX - (isDark ? maxX : minX)) < 5) {
-        isDark = !isDark;
-        currentX = isDark ? maxX : minX;
-        updatePositions(currentX, true);
-    }
-});
+    toggle.addEventListener('click', (e) => {
+        if (Math.abs(currentX - (isDark ? maxX : minX)) < 5) {
+            isDark = !isDark;
+            currentX = isDark ? maxX : minX;
+            updatePositions(currentX, true);
+        }
+    });
+}
 
 currentX = minX;
 updatePositions(currentX, false);
