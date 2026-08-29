@@ -1,5 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    doc, 
+    updateDoc, 
+    deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -19,55 +26,67 @@ const auth = getAuth(app);
 const container = document.getElementById("ads-container");
 const badge = document.getElementById("counter-badge");
 
-// ImgBB же башка шилтемелерди түз (direct image link) сүрөт форматына айландыруу
+// ImgBB же башка сүрөт шилтемелерин ондоо
 function fixImageUrl(url) {
-    if (!url) return "";
+    if (!url || typeof url !== 'string') return "";
     let cleanUrl = url.trim();
-    // Эгер ibb.co/code болсо, аны түз сүрөт серверине багыттоо аракети
+    
+    // ibb.co/code шилтемелерин түз сүрөт серверине айландыруу
     if (cleanUrl.includes("ibb.co/") && !cleanUrl.includes("i.ibb.co/")) {
-        // Ылайыктуу болгон учурда i.ibb.co шилтемесине айландырабыз
         cleanUrl = cleanUrl.replace("ibb.co/", "i.ibb.co/") + ".jpg";
     }
     return cleanUrl;
 }
 
-// Модалканы башкаруу функциялары
+// Модалканы башкаруу
 window.openImageModal = function(url) {
+    if (!url) return;
     const modal = document.getElementById("imageModal");
     const modalImg = document.getElementById("modalImageElement");
+    
     if (modal && modalImg) {
         modalImg.src = url;
         modal.classList.add("active");
     } else {
-        // Эгер модалка табылбаса, жаңы вкладкада ачабыз
         window.open(url, "_blank");
     }
-}
+};
 
 window.closeImageModal = function() {
     const modal = document.getElementById("imageModal");
     if (modal) {
         modal.classList.remove("active");
     }
-}
+};
 
+// Текшерүүнү күткөн сурамдарды алуу
 async function fetchPendingAds() {
+    if (!container) return;
+
     try {
         const querySnapshot = await getDocs(collection(db, "vip_requests"));
         let html = "";
         let count = 0;
 
-        querySnapshot.forEach((document) => {
-            const req = document.data();
+        querySnapshot.forEach((documentSnap) => {
+            const req = documentSnap.data();
+            const docId = documentSnap.id;
             
             if (req.status === "pending" || req.status === "pending_approval") {
                 count++;
                 
-                // Чек жана жарнама сүрөтүнүн шилтемелерин даярдоо
+                // Шилтемелерди аныктоо
                 const rawReceipt = req.receiptUrl || req.paymentReceiptImage || req.receipt || "";
                 const receiptImage = fixImageUrl(rawReceipt);
                 
-                const rawAdImg = (Array.isArray(req.images) ? req.images[0] : req.images) || req.image || "";
+                let rawAdImg = "";
+                if (Array.isArray(req.images) && req.images.length > 0) {
+                    rawAdImg = req.images[0];
+                } else if (typeof req.images === 'string') {
+                    rawAdImg = req.images;
+                } else if (req.image) {
+                    rawAdImg = req.image;
+                }
                 const adImage = fixImageUrl(rawAdImg);
 
                 const days = req.requestedDays || req.vipDays || 0;
@@ -75,8 +94,8 @@ async function fetchPendingAds() {
                 const adId = req.adId || "";
 
                 html += `
-                    <div class="bento-card bento-ad-item" id="card-${document.id}">
-                        <div class="media-preview-cluster" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <div class="bento-card bento-ad-item" id="card-${docId}">
+                        <div class="media-preview-cluster" style="display: flex; gap: 10px; flex-wrap: wrap;">
                             ${adImage ? `
                                 <div class="media-thumb" onclick="openImageModal('${adImage}')" style="cursor:pointer;">
                                     <img src="${adImage}" alt="Ad" onError="this.onerror=null; this.src='https://via.placeholder.com/150?text=Сүрөт+ката';" style="width:70px; height:70px; object-fit:cover; border-radius:8px;">
@@ -88,17 +107,16 @@ async function fetchPendingAds() {
                                 <div class="media-thumb" style="cursor:pointer; position:relative;">
                                     <img src="${receiptImage}" 
                                          alt="Чек" 
-                                         onclick="openImageModal('${rawReceipt}')"
-                                         onError="this.style.display='none'; document.getElementById('fallback-link-${document.id}').style.display='block';" 
+                                         onclick="openImageModal('${receiptImage}')"
+                                         onError="this.style.display='none'; document.getElementById('fallback-link-${docId}').style.display='block';" 
                                          style="width:70px; height:70px; object-fit:cover; border-radius:8px; border:1px solid #a855f7;">
-                                    <span onclick="openImageModal('${rawReceipt}')">Чек</span>
+                                    <span onclick="openImageModal('${receiptImage}')">Чек</span>
                                     
-                                    <!-- Эгер сүрөт сырттан жүктөлбөй калса (CORS же туура эмес формат болсо) ушул шилтеме чыгат -->
-                                    <a id="fallback-link-${document.id}" 
+                                    <a id="fallback-link-${docId}" 
                                        href="${rawReceipt}" 
                                        target="_blank" 
                                        style="display:none; font-size:11px; color:#3b82f6; text-decoration:underline; word-break:break-all; margin-top:4px;">
-                                       🔗 Чеги ачуу
+                                       🔗 Чекке шилтеме
                                     </a>
                                 </div>
                             ` : '<div style="font-size:11px; color:#ef4444; display:flex; align-items:center;">Чек жок</div>'}
@@ -106,11 +124,11 @@ async function fetchPendingAds() {
 
                         <div class="ad-details-stack" style="margin-top:10px;">
                             <div class="ad-link-row">
-                                <span style="font-size: 13px; font-weight: 700; color: #a855f7;">
+                                <span style="font-size: 14px; font-weight: 700; color: #a855f7;">
                                     ${req.adTitle ? req.adTitle : (adId ? 'Жарнама ID: ' + adId : 'VIP Өтүнүч')}
                                 </span>
                             </div>
-                            <div class="ad-meta-tags" style="display:flex; flex-direction:column; gap:2px; font-size:12px;">
+                            <div class="ad-meta-tags" style="display:flex; flex-direction:column; gap:4px; font-size:12px; margin-top:6px;">
                                 <span>Email: <strong>${req.userEmail || 'Көрсөтүлгөн эмес'}</strong></span>
                                 <span>Мөөнөтү: <strong class="dynamic-text">${days} күн</strong></span>
                                 <span>Баасы: <strong class="dynamic-text">${price} сом</strong></span>
@@ -118,11 +136,11 @@ async function fetchPendingAds() {
                             </div>
                         </div>
 
-                        <div class="bento-actions" style="margin-top:10px; display:flex; gap:10px;">
-                            <button class="bento-btn btn-yes" onclick="approveAd('${document.id}', '${adId}', ${days})" title="Ырастоо">
+                        <div class="bento-actions" style="margin-top:12px; display:flex; gap:10px;">
+                            <button class="bento-btn btn-yes" onclick="approveAd('${docId}', '${adId}', ${days})" title="Ырастоо">
                                 <i class="fa-solid fa-check"></i>
                             </button>
-                            <button class="bento-btn btn-no" onclick="rejectAd('${document.id}')" title="Четке кагуу">
+                            <button class="bento-btn btn-no" onclick="rejectAd('${docId}')" title="Четке кагуу">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
                         </div>
@@ -132,16 +150,17 @@ async function fetchPendingAds() {
         });
 
         if (count === 0) {
-            badge.innerText = `0`;
+            if (badge) badge.innerText = `0`;
             container.innerHTML = `
                 <div class="bento-card bento-empty">
                     <i class="fa-regular fa-circle-check"></i>
                     <p>Текшерүүнү күткөн жарнамалар калбады.</p>
                 </div>`;
         } else {
-            badge.innerText = `${count}`;
+            if (badge) badge.innerText = `${count}`;
             container.innerHTML = html;
         }
+        
         updateThemeColors(currentProgress);
 
     } catch (error) {
@@ -150,7 +169,7 @@ async function fetchPendingAds() {
     }
 }
 
-// Ырастоо функциясы
+// VIP Жарнаманы ырастоо функциясы
 window.approveAd = async function(requestId, adId, extraDays) {
     try {
         const nowMs = Date.now();
@@ -167,58 +186,57 @@ window.approveAd = async function(requestId, adId, extraDays) {
         const reqRef = doc(db, "vip_requests", requestId);
         await updateDoc(reqRef, { status: "approved" });
         
-        const card = document.getElementById(`card-${requestId}`);
-        if (card) {
-            card.style.transform = 'scale(0.95)';
-            card.style.opacity = '0';
-            setTimeout(() => {
-                card.remove();
-                checkEmptyState();
-            }, 300);
-        }
+        removeCardAnimation(requestId);
     } catch (e) {
         alert("Ырастоодо ката кетти: " + e.message);
     }
-}
+};
 
-// Четке кагуу функциясы
+// Жарнаманы четке кагуу
 window.rejectAd = async function(requestId) {
     if (confirm("Бул жарнама сурамын четке кагып өчүргүңүз келеби?")) {
         try {
             await deleteDoc(doc(db, "vip_requests", requestId));
-            
-            const card = document.getElementById(`card-${requestId}`);
-            if (card) {
-                card.style.transform = 'scale(0.95)';
-                card.style.opacity = '0';
-                setTimeout(() => {
-                    card.remove();
-                    checkEmptyState();
-                }, 300);
-            }
+            removeCardAnimation(requestId);
         } catch (e) {
             alert("Ката кетти: " + e.message);
         }
     }
+};
+
+// Ийгиликтүү же четке кагылган элементти анимация менен өчүрүү
+function removeCardAnimation(requestId) {
+    const card = document.getElementById(`card-${requestId}`);
+    if (card) {
+        card.style.transition = 'all 0.3s ease';
+        card.style.transform = 'scale(0.95)';
+        card.style.opacity = '0';
+        setTimeout(() => {
+            card.remove();
+            checkEmptyState();
+        }, 300);
+    }
 }
 
 function checkEmptyState() {
+    if (!container) return;
     const cards = container.getElementsByClassName("bento-ad-item");
     if (cards.length === 0) {
-        badge.innerText = `0`;
+        if (badge) badge.innerText = `0`;
         container.innerHTML = `
             <div class="bento-card bento-empty">
                 <i class="fa-regular fa-circle-check"></i>
                 <p>Текшерүүнү күткөн жарнамалар калбады.</p>
             </div>`;
     } else {
-        badge.innerText = `${cards.length}`;
+        if (badge) badge.innerText = `${cards.length}`;
     }
 }
 
+// Баштапкы маалыматтарды жүктөө
 fetchPendingAds();
 
-// --- Тумблер жана Түнкү/Күндүзгү режим логикасы ---
+// --- Түнкү/Күндүзгү Режим Логикасы ---
 const body = document.body;
 const toggle = document.getElementById('toggle');
 const knob = document.getElementById('knob');
@@ -230,13 +248,20 @@ let isDragging = false;
 let startX = 0;
 let currentX = 0;
 const minX = 5;
-const maxX = toggle ? (toggle.clientWidth - (knob ? knob.clientWidth : 0) - 5) : 0;
+let maxX = 45; // Баштапкы эсеп, төмөндө эсептелет
 let isDark = false;
 let currentProgress = 0;
 
+function calculateMaxX() {
+    if (toggle && knob) {
+        maxX = toggle.clientWidth - knob.clientWidth - 5;
+    }
+}
+calculateMaxX();
+
 function hexToRgb(hex) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 0, g: 0, b: 0 };
 }
 
 const lightBgRgb = hexToRgb('#e5e5e5');
@@ -271,7 +296,7 @@ function updateThemeColors(progress) {
     const mainTextCol = `rgb(${textR}, ${textG}, ${textB})`;
 
     document.querySelectorAll('.brand-info h1, .ad-meta-tags, .ad-meta-tags strong, .brand-info p, .stat-pill span').forEach(el => {
-        if(!el.classList.contains('dynamic-text') && !el.style.color.includes('a855f7')) {
+        if (!el.classList.contains('dynamic-text') && (!el.style.color || !el.style.color.includes('a855f7'))) {
             el.style.color = mainTextCol;
         }
     });
@@ -302,6 +327,7 @@ function updatePositions(pos, animate = false) {
 
     knob.style.left = pos + 'px';
     let progress = (pos - minX) / (maxX - minX || 1);
+    progress = Math.max(0, Math.min(1, progress)); // 0 менен 1дин ортосунда чектейбиз
     updateThemeColors(progress);
 
     if (icon) {
@@ -327,22 +353,24 @@ function updatePositions(pos, animate = false) {
     let textOffset = progress * 100;
     if (lightText) {
         lightText.style.transform = `translateX(${textOffset}px)`;
-        lightText.style.opacity = 1 - progress;
+        lightText.style.opacity = (1 - progress).toString();
     }
     if (darkText) {
         darkText.style.transform = `translateX(${textOffset}px)`;
-        darkText.style.opacity = progress;
+        darkText.style.opacity = progress.toString();
     }
 }
 
 function startDrag(e) {
     isDragging = true;
-    startX = (e.touches ? e.touches[0].clientX : e.clientX) - currentX;
+    calculateMaxX();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    startX = clientX - currentX;
 }
 
 function onDrag(e) {
     if (!isDragging) return;
-    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     currentX = clientX - startX;
     if (currentX < minX) currentX = minX;
     if (currentX > maxX) currentX = maxX;
@@ -352,7 +380,7 @@ function onDrag(e) {
 function stopDrag() {
     if (!isDragging) return;
     isDragging = false;
-    let threshold = (minX + maxX) / 2;
+    const threshold = (minX + maxX) / 2;
     if (currentX > threshold) {
         currentX = maxX;
         isDark = true;
@@ -368,12 +396,13 @@ if (toggle) {
     window.addEventListener('mousemove', onDrag);
     window.addEventListener('mouseup', stopDrag);
 
-    toggle.addEventListener('touchstart', startDrag);
-    window.addEventListener('touchmove', onDrag);
+    toggle.addEventListener('touchstart', startDrag, { passive: true });
+    window.addEventListener('touchmove', onDrag, { passive: true });
     window.addEventListener('touchend', stopDrag);
 
-    toggle.addEventListener('click', (e) => {
-        if (Math.abs(currentX - (isDark ? maxX : minX)) < 5) {
+    toggle.addEventListener('click', () => {
+        calculateMaxX();
+        if (Math.abs(currentX - (isDark ? maxX : minX)) < 10) {
             isDark = !isDark;
             currentX = isDark ? maxX : minX;
             updatePositions(currentX, true);
@@ -381,5 +410,13 @@ if (toggle) {
     });
 }
 
+// Экран размери өзгөргөндө тумблерди тууралоо
+window.addEventListener('resize', () => {
+    calculateMaxX();
+    currentX = isDark ? maxX : minX;
+    updatePositions(currentX, false);
+});
+
+// Баштапкы абалды орнотуу
 currentX = minX;
 updatePositions(currentX, false);
