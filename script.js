@@ -59,19 +59,49 @@ window.closeImageModal = function() {
     }
 };
 
-// Текшерүүнү күткөн сурамдарды алуу
+// Текшерүүнү күткөн сурамдарды эки коллекциядан тең алуу (vip_requests жана vip_ads)
 async function fetchPendingAds() {
     if (!container) return;
 
     try {
-        const querySnapshot = await getDocs(collection(db, "vip_requests"));
+        // Эки коллекцияны тең параллелдүү сурап алуу
+        const [requestsSnap, adsSnap] = await Promise.all([
+            getDocs(collection(db, "vip_requests")).catch(() => ({ forEach: () => {} })),
+            getDocs(collection(db, "vip_ads")).catch(() => ({ forEach: () => {} }))
+        ]);
+
         let html = "";
         let count = 0;
+        const allItems = [];
 
-        querySnapshot.forEach((documentSnap) => {
-            const req = documentSnap.data();
-            const docId = documentSnap.id;
+        // 1. vip_requests коллекциясынан жыйноо
+        if (requestsSnap && requestsSnap.forEach) {
+            requestsSnap.forEach((docSnap) => {
+                allItems.push({
+                    docId: docSnap.id,
+                    sourceCol: "vip_requests",
+                    data: docSnap.data()
+                });
+            });
+        }
+
+        // 2. vip_ads коллекциясынан жыйноо
+        if (adsSnap && adsSnap.forEach) {
+            adsSnap.forEach((docSnap) => {
+                allItems.push({
+                    docId: docSnap.id,
+                    sourceCol: "vip_ads",
+                    data: docSnap.data()
+                });
+            });
+        }
+
+        allItems.forEach((item) => {
+            const req = item.data;
+            const docId = item.docId;
+            const sourceCol = item.sourceCol;
             
+            // Статустарды текшерүү
             if (req.status === "pending" || req.status === "pending_approval") {
                 count++;
                 
@@ -91,7 +121,7 @@ async function fetchPendingAds() {
 
                 const days = req.requestedDays || req.vipDays || 0;
                 const price = req.totalPrice || req.vipTotalCost || 0;
-                const adId = req.adId || "";
+                const adId = req.adId || docId;
 
                 html += `
                     <div class="bento-card bento-ad-item" id="card-${docId}">
@@ -125,11 +155,12 @@ async function fetchPendingAds() {
                         <div class="ad-details-stack" style="margin-top:10px;">
                             <div class="ad-link-row">
                                 <span style="font-size: 14px; font-weight: 700; color: #a855f7;">
-                                    ${req.adTitle ? req.adTitle : (adId ? 'Жарнама ID: ' + adId : 'VIP Өтүнүч')}
+                                    ${req.adTitle || req.title || 'VIP Жарнама ID: ' + docId}
                                 </span>
                             </div>
                             <div class="ad-meta-tags" style="display:flex; flex-direction:column; gap:4px; font-size:12px; margin-top:6px;">
-                                <span>Email: <strong>${req.userEmail || 'Көрсөтүлгөн эмес'}</strong></span>
+                                <span>Булагы: <strong style="color:#a855f7;">${sourceCol}</strong></span>
+                                <span>Email: <strong>${req.userEmail || req.email || 'Көрсөтүлгөн эмес'}</strong></span>
                                 <span>Мөөнөтү: <strong class="dynamic-text">${days} күн</strong></span>
                                 <span>Баасы: <strong class="dynamic-text">${price} сом</strong></span>
                                 ${rawReceipt ? `<span style="font-size:10px; color:#6b7280; word-break:break-all;">Шилтеме: <a href="${rawReceipt}" target="_blank" style="color:#3b82f6;">${rawReceipt}</a></span>` : ''}
@@ -137,10 +168,10 @@ async function fetchPendingAds() {
                         </div>
 
                         <div class="bento-actions" style="margin-top:12px; display:flex; gap:10px;">
-                            <button class="bento-btn btn-yes" onclick="approveAd('${docId}', '${adId}', ${days})" title="Ырастоо">
+                            <button class="bento-btn btn-yes" onclick="approveAd('${docId}', '${adId}', ${days}, '${sourceCol}')" title="Ырастоо">
                                 <i class="fa-solid fa-check"></i>
                             </button>
-                            <button class="bento-btn btn-no" onclick="rejectAd('${docId}')" title="Четке кагуу">
+                            <button class="bento-btn btn-no" onclick="rejectAd('${docId}', '${sourceCol}')" title="Четке кагуу">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
                         </div>
@@ -170,21 +201,29 @@ async function fetchPendingAds() {
 }
 
 // VIP Жарнаманы ырастоо функциясы
-window.approveAd = async function(requestId, adId, extraDays) {
+window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
     try {
         const nowMs = Date.now();
-        const addedMs = Number(extraDays) * 24 * 60 * 60 * 1000;
+        const addedMs = Number(extraDays || 0) * 24 * 60 * 60 * 1000;
 
-        if (adId) {
-            const adRef = doc(db, "vip_ads", adId);
+        const targetAdId = (adId && adId !== 'undefined') ? adId : requestId;
+
+        // 1. vip_ads ичине статусту active кылып мөөнөтүн жаңыртуу
+        try {
+            const adRef = doc(db, "vip_ads", targetAdId);
             await updateDoc(adRef, { 
                 expiresAt: nowMs + addedMs,
                 status: "active" 
             });
+        } catch (e) {
+            console.warn("vip_ads коллекциясын жаңыртууда эскертүү:", e);
         }
 
-        const reqRef = doc(db, "vip_requests", requestId);
-        await updateDoc(reqRef, { status: "approved" });
+        // 2. Эгер vip_requests коллекциясынан болсо, статусун "approved" кылуу
+        if (sourceCol === "vip_requests") {
+            const reqRef = doc(db, "vip_requests", requestId);
+            await updateDoc(reqRef, { status: "approved" });
+        }
         
         removeCardAnimation(requestId);
     } catch (e) {
@@ -193,10 +232,11 @@ window.approveAd = async function(requestId, adId, extraDays) {
 };
 
 // Жарнаманы четке кагуу
-window.rejectAd = async function(requestId) {
+window.rejectAd = async function(requestId, sourceCol) {
     if (confirm("Бул жарнама сурамын четке кагып өчүргүңүз келеби?")) {
         try {
-            await deleteDoc(doc(db, "vip_requests", requestId));
+            const targetCol = sourceCol || "vip_requests";
+            await deleteDoc(doc(db, targetCol, requestId));
             removeCardAnimation(requestId);
         } catch (e) {
             alert("Ката кетти: " + e.message);
@@ -248,7 +288,7 @@ let isDragging = false;
 let startX = 0;
 let currentX = 0;
 const minX = 5;
-let maxX = 45; // Баштапкы эсеп, төмөндө эсептелет
+let maxX = 45;
 let isDark = false;
 let currentProgress = 0;
 
@@ -327,7 +367,7 @@ function updatePositions(pos, animate = false) {
 
     knob.style.left = pos + 'px';
     let progress = (pos - minX) / (maxX - minX || 1);
-    progress = Math.max(0, Math.min(1, progress)); // 0 менен 1дин ортосунда чектейбиз
+    progress = Math.max(0, Math.min(1, progress));
     updateThemeColors(progress);
 
     if (icon) {
