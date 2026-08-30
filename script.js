@@ -3,6 +3,7 @@ import {
     getFirestore, 
     collection, 
     getDocs, 
+    getDoc, // <- Ушул жерге getDoc кошулду
     doc, 
     updateDoc, 
     deleteDoc 
@@ -146,7 +147,7 @@ async function fetchPendingAds() {
                                        href="${rawReceipt}" 
                                        target="_blank" 
                                        style="display:none; font-size:11px; color:#3b82f6; text-decoration:underline; word-break:break-all; margin-top:4px;">
-                                       🔗 Чекке шилтеме
+                                        🔗 Чекке шилтеме
                                     </a>
                                 </div>
                             ` : '<div style="font-size:11px; color:#ef4444; display:flex; align-items:center;">Чек жок</div>'}
@@ -200,26 +201,44 @@ async function fetchPendingAds() {
     }
 }
 
-// VIP Жарнаманы ырастоо функциясы
+// VIP Жарнаманы ырастоо функциясы (ОҢДОЛГОН ЛОГИКА)
 window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
     try {
         const nowMs = Date.now();
         const addedMs = Number(extraDays || 0) * 24 * 60 * 60 * 1000;
-
         const targetAdId = (adId && adId !== 'undefined') ? adId : requestId;
 
-        // 1. vip_ads ичине статусту active кылып мөөнөтүн жаңыртуу
-        try {
-            const adRef = doc(db, "vip_ads", targetAdId);
-            await updateDoc(adRef, { 
-                expiresAt: nowMs + addedMs,
-                status: "active" 
-            });
-        } catch (e) {
-            console.warn("vip_ads коллекциясын жаңыртууда эскертүү:", e);
+        // 1. vip_ads коллекциясынан учурдагы документти окуп алуу
+        const adRef = doc(db, "vip_ads", targetAdId);
+        const adSnap = await getDoc(adRef);
+
+        let finalExpiresAt = nowMs + addedMs;
+
+        if (adSnap.exists()) {
+            const currentData = adSnap.data();
+            let currentExpireMs = 0;
+
+            // Базадагы expiresAt маанисин алуу
+            if (currentData.expiresAt?.toMillis) {
+                currentExpireMs = currentData.expiresAt.toMillis();
+            } else if (typeof currentData.expiresAt === 'number') {
+                currentExpireMs = currentData.expiresAt;
+            }
+
+            // Эгер мөөнөтү али бүтө элек болсо (currentExpireMs > nowMs),
+            // калган убакытка жаңы күндү кошобуз. Бүтүп калган болсо, азыркы убакытка кошобуз.
+            const baseTime = currentExpireMs > nowMs ? currentExpireMs : nowMs;
+            finalExpiresAt = baseTime + addedMs;
         }
 
-        // 2. Эгер vip_requests коллекциясынан болсо, статусун "approved" кылуу
+        // 2. vip_ads ичине мөөнөттү жаңылап сактоо
+        await updateDoc(adRef, { 
+            expiresAt: finalExpiresAt,
+            status: "active",
+            updatedAt: nowMs
+        });
+
+        // 3. Эгер vip_requests коллекциясынан болсо, статусун "approved" кылуу
         if (sourceCol === "vip_requests") {
             const reqRef = doc(db, "vip_requests", requestId);
             await updateDoc(reqRef, { status: "approved" });
@@ -227,6 +246,7 @@ window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
         
         removeCardAnimation(requestId);
     } catch (e) {
+        console.error("Ырастоодо ката:", e);
         alert("Ырастоодо ката кетти: " + e.message);
     }
 };
