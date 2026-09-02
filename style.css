@@ -28,7 +28,7 @@ body {
     gap: 16px;
 }
 
-/* Glassmorphism Карточкасы */
+/* Glassmorphism тунук карточкасы */
 .bento-card {
     background: rgba(23, 15, 41, 0.75);
     backdrop-filter: blur(25px);
@@ -40,14 +40,13 @@ body {
                 inset 0 1px 1px rgba(255, 255, 255, 0.1);
 }
 
-/* Башкы логотип жана Header */
+/* Бренд / Логотип блогу */
 .brand-box {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
     padding: 28px 20px 20px 20px;
-    position: relative;
 }
 
 .brand-icon {
@@ -82,83 +81,32 @@ body {
     margin-top: 4px;
 }
 
-/* Башкаруу панели (Статистика жана Тумблер) */
-.bento-controls-row {
-    display: grid;
-    grid-template-columns: 110px 1fr;
-    gap: 12px;
-    align-items: center;
-}
-
+/* Статистика виджети */
 .stat-pill {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 60px;
-    border-radius: 20px;
-    padding: 0;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-radius: 18px;
+    background: rgba(15, 10, 30, 0.6);
+    border: 1px solid rgba(168, 85, 247, 0.2);
 }
 
 .stat-pill span:first-child {
-    font-size: 10px;
+    font-size: 12px;
     color: #94a3b8;
     text-transform: uppercase;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 1px;
 }
 
 .stat-pill span:last-child {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 800;
     color: #c084fc;
 }
 
-/* Тумблер Стили */
-.toggle {
-    position: relative;
-    width: 100%;
-    height: 60px;
-    border-radius: 30px;
-    background: rgba(15, 10, 30, 0.8);
-    border: 1px solid rgba(168, 85, 247, 0.3);
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
-    overflow: hidden;
-}
-
-.knob {
-    position: absolute;
-    left: 4px;
-    top: 4px;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #a855f7, #6366f1);
-    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
-}
-
-#icon {
-    font-size: 22px;
-}
-
-.toggle-text {
-    position: absolute;
-    font-size: 14px;
-    font-weight: 700;
-    color: #cbd5e1;
-    pointer-events: none;
-}
-
-.text-light { right: 20px; opacity: 1; }
-.text-dark { left: -80px; opacity: 0; }
-
-/* Горизонтальный меню (Tabs) */
+/* Меню (Табтар) */
 .bento-nav-tabs {
     display: flex;
     gap: 8px;
@@ -189,7 +137,7 @@ body {
     box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
 }
 
-/* Dynamic Feed & Item Card */
+/* Жарнамалар тизмеси */
 #ads-container {
     display: flex;
     flex-direction: column;
@@ -242,7 +190,7 @@ body {
     color: #c084fc;
 }
 
-/* Ушул баскыч сүрөттөгү «Скачать АПК» стилинде */
+/* Баскычтар (Сүрөттөгү «Скачать АПК» баскычынын стилине окшоштурулган) */
 .bento-actions {
     display: flex;
     gap: 10px;
@@ -286,7 +234,7 @@ body {
     color: white;
 }
 
-/* Modal Lightbox */
+/* Сүрөттү чоңойтуп көрүү модалкасы */
 .image-modal {
     position: fixed;
     top: 0;
