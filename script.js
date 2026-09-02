@@ -62,7 +62,7 @@ window.closeImageModal = function() {
 function listenToAllData() {
     if (!container) return;
 
-    // 1. vip_ads угуу
+    // 1. vip_ads
     onSnapshot(collection(db, "vip_ads"), (snapshot) => {
         rawVipAdsData = [];
         snapshot.forEach((docSnap) => {
@@ -71,7 +71,7 @@ function listenToAllData() {
         renderCurrentTab();
     });
 
-    // 2. vip_requests угуу
+    // 2. vip_requests
     onSnapshot(collection(db, "vip_requests"), (snapshot) => {
         rawVipRequestsData = [];
         snapshot.forEach((docSnap) => {
@@ -80,7 +80,7 @@ function listenToAllData() {
         renderCurrentTab();
     });
 
-    // 3. ads угуу
+    // 3. ads
     onSnapshot(collection(db, "ads"), (snapshot) => {
         rawAdsData = [];
         snapshot.forEach((docSnap) => {
@@ -96,18 +96,17 @@ function renderCurrentTab() {
     let count = 0;
 
     if (activeTab === 'vip') {
-        // 1. ЖАҢЫ VIP СУРАМДАР (vip_ads ичинен status "pending" же "pending_approval" болгондор же статусу жоктор)
+        // 1. ЖАҢЫ VIP СУРАМДАР (vip_ads)
         const pendingVipAds = rawVipAdsData.filter(item => 
             item.status === "pending" || item.status === "pending_approval" || !item.status
         );
 
-        // 2. АКТИВДҮҮ VIPЖАРНАМАЛАР (vip_ads кабыл алынгандары + ads базасындагы VIPтер)
+        // 2. АКТИВДҮҮ VIPтер
         const approvedVipAds = rawVipAdsData.filter(item => 
             item.status === "approved" || item.status === "active"
         );
         const adsColVip = rawAdsData.filter(ad => ad.isVip === true || ad.type === "vip");
         
-        // Кайталанбай тургандай кылып бириктирүү
         const activeVipMap = new Map();
         [...approvedVipAds, ...adsColVip].forEach(ad => activeVipMap.set(ad.docId, ad));
         const combinedActiveVip = Array.from(activeVipMap.values());
@@ -117,7 +116,7 @@ function renderCurrentTab() {
 
         count = pendingVipAds.length + extendRequests.length + combinedActiveVip.length;
 
-        // А) УРУКСАТ КҮТҮП ЖАТКАН ЖАҢЫ VIP ЖАРНАМАЛАР (vip_ads)
+        // А) Жаңы VIP Жарнамалар (vip_ads)
         pendingVipAds.forEach(item => {
             const rawReceipt = item.receiptUrl || item.paymentReceiptImage || item.receipt || "";
             const receiptImage = fixImageUrl(rawReceipt);
@@ -128,7 +127,7 @@ function renderCurrentTab() {
 
             html += `
                 <div class="bento-card bento-ad-item" id="card-${item.docId}">
-                    <div style="font-size:11px; font-weight:800; color:#c084fc; letter-spacing:1px;">✨ ЖАҢЫ VIP СУРАМ (УРУКСАТ КҮТҮҮДӨ)</div>
+                    <div style="font-size:11px; font-weight:800; color:#c084fc; letter-spacing:1px;">✨ ЖАҢЫ VIP СУРАМ</div>
                     <div class="media-preview-cluster">
                         ${adImage ? `<div class="media-thumb" onclick="openImageModal('${adImage}')"><img src="${adImage}"></div>` : ''}
                         ${receiptImage ? `<div class="media-thumb" onclick="openImageModal('${receiptImage}')"><img src="${receiptImage}"></div>` : ''}
@@ -154,7 +153,7 @@ function renderCurrentTab() {
             `;
         });
 
-        // Б) МӨӨНӨТҮН УЗАРТУУ СУРАМДАРЫ (vip_requests)
+        // Б) VIP Мөөнөтүн узартуу сурамдары (vip_requests)
         extendRequests.forEach(req => {
             const rawReceipt = req.receiptUrl || req.paymentReceiptImage || req.receipt || "";
             const receiptImage = fixImageUrl(rawReceipt);
@@ -168,14 +167,14 @@ function renderCurrentTab() {
                     </div>
 
                     <div class="ad-details-stack">
-                        <span style="font-size: 15px; font-weight: 700;">Жарнама ID: ${req.adId || req.docId}</span>
+                        <span style="font-size: 15px; font-weight: 700;">${req.adTitle || req.title || 'Жарнама ID: ' + (req.adId || req.docId)}</span>
                         <div class="ad-meta-tags">
                             <span>Кошула турган мөөнөт: <strong>+${days} күн</strong></span>
                         </div>
                     </div>
 
                     <div class="bento-actions">
-                        <button class="bento-btn btn-yes" onclick="approveExtendVipFromRequests('${req.docId}', '${req.adId}', ${days})">
+                        <button class="bento-btn btn-yes" onclick="approveExtendVipFromRequests('${req.docId}')">
                             <i class="fa-solid fa-clock-rotate-left"></i> Узарттыруу
                         </button>
                         <button class="bento-btn btn-no" onclick="removeItem('${req.docId}', 'vip_requests')">
@@ -186,7 +185,7 @@ function renderCurrentTab() {
             `;
         });
 
-        // В) АКТИВДҮҮ (УРУКСАТ БЕРИЛГЕН) VIP ЖАРНАМАЛАР
+        // В) Активдүү VIP жарнамалар
         combinedActiveVip.forEach(ad => {
             const rawImg = Array.isArray(ad.images) && ad.images.length > 0 ? ad.images[0] : (ad.image || "");
             const adImg = fixImageUrl(rawImg);
@@ -253,7 +252,7 @@ window.switchCategory = function(category) {
     renderCurrentTab();
 };
 
-// 1. ЖАҢЫ VIP ЖАРНАМАГА УРУКСАТ БЕРҮҮ (Статусун 'active' кылат да, ads базасына көчүрөт)
+// 1. ЖАҢЫ VIP ЖАРНАМАГА УРУКСАТ БЕРҮҮ
 window.approveNewVipFromVipAds = async function(vipDocId) {
     try {
         const itemRef = doc(db, "vip_ads", vipDocId);
@@ -268,14 +267,12 @@ window.approveNewVipFromVipAds = async function(vipDocId) {
         const days = Number(data.requestedDays || data.vipDays || data.days || 1);
         const expiresAt = Date.now() + (days * 24 * 60 * 60 * 1000);
 
-        // vip_ads ичинде статусун 'active' катары жаңыртуу
         await updateDoc(itemRef, {
             status: "active",
             isVip: true,
             expiresAt: expiresAt
         });
 
-        // Негизги 'ads' коллекциясына да кошуу
         const newAdRef = doc(db, "ads", vipDocId);
         await setDoc(newAdRef, {
             ...data,
@@ -286,40 +283,63 @@ window.approveNewVipFromVipAds = async function(vipDocId) {
             createdAt: Date.now()
         });
 
+        removeCardAnimation(vipDocId);
     } catch (e) {
         alert("Ката: " + e.message);
     }
 };
 
-// 2. VIP МӨӨНӨТҮН УЗАРТУУ
-window.approveExtendVipFromRequests = async function(requestId, adId, extraDays) {
+// 2. VIP МӨӨНӨТҮН УЗАРТУУ (АКЫЛДУУ ОҢДОЛДУ)
+window.approveExtendVipFromRequests = async function(requestId) {
     try {
-        const targetAdId = (adId && adId !== 'undefined') ? adId : requestId;
-        const adRef = doc(db, "ads", targetAdId);
-        const adSnap = await getDoc(adRef);
+        const reqRef = doc(db, "vip_requests", requestId);
+        const reqSnap = await getDoc(reqRef);
 
-        if (!adSnap.exists()) {
-            alert("Узартыла турган негизги жарнама (ads) табылган жок!");
+        if (!reqSnap.exists()) {
+            alert("Узартуу сурамы табылган жок!");
             return;
         }
 
-        const adData = adSnap.data();
+        const reqData = reqSnap.data();
+        const extraDays = Number(reqData.requestedDays || reqData.vipDays || reqData.days || 1);
+        const addedMs = extraDays * 24 * 60 * 60 * 1000;
         const nowMs = Date.now();
-        const addedMs = Number(extraDays || 0) * 24 * 60 * 60 * 1000;
 
-        let currentExpireMs = adData.expiresAt?.toMillis ? adData.expiresAt.toMillis() : (typeof adData.expiresAt === 'number' ? adData.expiresAt : 0);
-        const baseTime = currentExpireMs > nowMs ? currentExpireMs : nowMs;
-        const finalExpiresAt = baseTime + addedMs;
+        // Документтен негизги жарнаманын IDсин издөө
+        const targetAdId = reqData.adId || reqData.targetAdId || reqData.postDocId || reqData.ad_id || requestId;
 
-        // 'ads' базасында созуу
-        await updateDoc(adRef, {
-            isVip: true,
-            type: "vip",
-            expiresAt: finalExpiresAt
-        });
+        const adRef = doc(db, "ads", targetAdId);
+        const adSnap = await getDoc(adRef);
 
-        // 'vip_requests' ичинен өчүрүү
-        await deleteDoc(doc(db, "vip_requests", requestId));
+        if (adSnap.exists()) {
+            // Эгер негизги базада бар болсо - узартабыз
+            const adData = adSnap.data();
+            let currentExpireMs = adData.expiresAt?.toMillis ? adData.expiresAt.toMillis() : (typeof adData.expiresAt === 'number' ? adData.expiresAt : 0);
+            const baseTime = currentExpireMs > nowMs ? currentExpireMs : nowMs;
+            const finalExpiresAt = baseTime + addedMs;
+
+            await updateDoc(adRef, {
+                isVip: true,
+                type: "vip",
+                expiresAt: finalExpiresAt,
+                status: "active"
+            });
+        } else {
+            // Эгерads базасында жок болсо, ката чыгарбай vip_requests маалыматын ads базасына сактап узартабыз
+            await setDoc(adRef, {
+                ...reqData,
+                isVip: true,
+                type: "vip",
+                expiresAt: nowMs + addedMs,
+                status: "active",
+                createdAt: nowMs
+            });
+        }
+
+        // vip_requests сурамын өчүрүү
+        await deleteDoc(reqRef);
+        removeCardAnimation(requestId);
+
     } catch (e) {
         alert("Узартууда ката чыкты: " + e.message);
     }
@@ -348,4 +368,4 @@ function removeCardAnimation(docId) {
 }
 
 listenToAllData();
-            
+                
