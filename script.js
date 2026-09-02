@@ -33,7 +33,7 @@ let rawVipAdsData = [];       // vip_ads
 let rawVipRequestsData = [];  // vip_requests
 let rawAdsData = [];          // ads
 
-// ImgBB же башка сүрөт шилтемелерин ондоо
+// ImgBB же башка сүрөт шилтемелерин оңдоо
 function fixImageUrl(url) {
     if (!url || typeof url !== 'string') return "";
     let cleanUrl = url.trim();
@@ -107,8 +107,8 @@ function renderCurrentTab() {
         // Б) Мөөнөт узартуу сурамдары (vip_requests)
         const extendRequests = rawVipRequestsData.filter(req => req.status !== "approved");
 
-        // В) Активдүү (кабыл алынган) VIP Жарнамалар (ads коллекциясынан)
-        const activeVipAds = rawAdsData.filter(ad => ad.isVip === true || ad.type === "vip");
+        // В) Активдүү (уруксат берилген) VIP Жарнамалар (vip_ads коллекциясынан)
+        const activeVipAds = rawVipAdsData.filter(ad => ad.status === "active");
 
         count = pendingVipAds.length + extendRequests.length + activeVipAds.length;
 
@@ -183,9 +183,9 @@ function renderCurrentTab() {
             `;
         });
 
-        // 3. Активдүү VIP Жарнамалар (ads базасынан)
+        // 3. Активдүү VIP Жарнамалар (vip_ads базасынан)
         activeVipAds.forEach(ad => {
-            const rawImg = Array.isArray(ad.images) && ad.images.length > 0 ? ad.images[0] : (ad.image || "");
+            const rawImg = Array.isArray(ad.images) && ad.images.length > 0 ? ad.images[0] : (ad.image || ad.imageUrl || "");
             const adImg = fixImageUrl(rawImg);
 
             html += `
@@ -199,7 +199,7 @@ function renderCurrentTab() {
                         </div>
                     </div>
                     <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-                        <button class="bento-btn btn-no" onclick="rejectAd('${ad.docId}', 'ads')" style="height:36px; font-size:12px;">
+                        <button class="bento-btn btn-no" onclick="rejectAd('${ad.docId}', 'vip_ads')" style="height:36px; font-size:12px;">
                             <i class="fa-solid fa-trash-can"></i> Өчүрүү
                         </button>
                     </div>
@@ -208,7 +208,7 @@ function renderCurrentTab() {
         });
 
     } else {
-        // ЖӨНӨКӨЙ ЖАРНАМАЛАР
+        // ЖӨНӨКӨЙ ЖАРНАМАЛАР (ads коллекциясынан)
         const normalAds = rawAdsData.filter(ad => !ad.isVip && ad.type !== "vip");
         count = normalAds.length;
 
@@ -250,36 +250,35 @@ window.switchCategory = function(category) {
     renderCurrentTab();
 };
 
-// СИЗ ИШТЕТКЕН МӨӨНӨТ ТЕКШЕРҮҮ ЖАНА УЗАРТУУ ЛОГИКАСЫ
+// МӨӨНӨТ ТЕКШЕРҮҮ ЖАНА УЗАРТУУ ЛОГИКАСЫ (ОҢДОЛГОН)
 window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
     try {
         const nowMs = Date.now();
         const addedMs = Number(extraDays || 0) * 24 * 60 * 60 * 1000;
         const targetAdId = (adId && adId !== 'undefined') ? adId : requestId;
 
-        // 1. Алгач негизги 'ads' базасынан же 'vip_ads' коллекциясынан маалыматты текшерүү
-        let adRef = doc(db, "ads", targetAdId);
-        let adSnap = await getDoc(adRef);
+        // 1. Алгач коллекциялардан маалыматты алуу
+        let vipRef = doc(db, "vip_ads", targetAdId);
+        let vipSnap = await getDoc(vipRef);
 
         let sourceData = {};
 
-        if (adSnap.exists()) {
-            sourceData = adSnap.data();
+        if (vipSnap.exists()) {
+            sourceData = vipSnap.data();
         } else {
-            // Эгер ads ичинде жок болсо, vip_ads ичинен издейбиз
-            const vipRef = doc(db, "vip_ads", requestId);
-            const vipSnap = await getDoc(vipRef);
-            if (vipSnap.exists()) {
-                sourceData = vipSnap.data();
+            // Эгер vip_ads ичинде азырынча жок болсо, vip_requests же ads ичинен издейбиз
+            const reqRef = doc(db, "vip_requests", requestId);
+            const reqSnap = await getDoc(reqRef);
+            if (reqSnap.exists()) {
+                sourceData = reqSnap.data();
             } else {
-                // Эгер анда да жок болсо, vip_requests ичинен алабыз
-                const reqRef = doc(db, "vip_requests", requestId);
-                const reqSnap = await getDoc(reqRef);
-                if (reqSnap.exists()) sourceData = reqSnap.data();
+                const adRef = doc(db, "ads", targetAdId);
+                const adSnap = await getDoc(adRef);
+                if (adSnap.exists()) sourceData = adSnap.data();
             }
         }
 
-        // Эски кодуңуздагы убакыт эсептөө логикасы
+        // Убакыт эсептөө
         let currentExpireMs = 0;
         if (sourceData.expiresAt?.toMillis) {
             currentExpireMs = sourceData.expiresAt.toMillis();
@@ -287,13 +286,11 @@ window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
             currentExpireMs = sourceData.expiresAt;
         }
 
-        // Эгер мөөнөтү али бүтө элек болсо (currentExpireMs > nowMs),
-        // калган убакытка жаңы күндү кошобуз. Бүтүп калган болсо, азыркы убакытка кошобуз.
         const baseTime = currentExpireMs > nowMs ? currentExpireMs : nowMs;
         const finalExpiresAt = baseTime + addedMs;
 
-        // 2. Негизги 'ads' коллекциясына VIP катары активдештирип сактоо
-        await setDoc(adRef, { 
+        // 2. VIP жарнама катары 'vip_ads' коллекциясында статус активдештирилет
+        await setDoc(vipRef, { 
             ...sourceData,
             isVip: true,
             type: "vip",
@@ -302,11 +299,17 @@ window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
             updatedAt: nowMs
         }, { merge: true });
 
-        // 3. Уруксат берилген сурамдарды убактылуу коллекциялардан тазалоо
+        // 3. Эгерде бул жөнөкөй жарнамадан VIP болгон болсо же vip_requests'тен келген болсо, 
+        // негизги 'ads' базасында кайталанбашы үчүн isVip: false же тазалап коюу
+        const mainAdRef = doc(db, "ads", targetAdId);
+        const mainAdSnap = await getDoc(mainAdRef);
+        if (mainAdSnap.exists()) {
+            await updateDoc(mainAdRef, { isVip: false, type: "normal" });
+        }
+
+        // 4. Сурамдардан убактылуу маалыматтарды тазалоо
         if (sourceCol === "vip_requests") {
             await deleteDoc(doc(db, "vip_requests", requestId));
-        } else if (sourceCol === "vip_ads") {
-            await deleteDoc(doc(db, "vip_ads", requestId));
         }
 
         removeCardAnimation(requestId);
