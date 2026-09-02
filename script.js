@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { 
     getFirestore, 
     collection, 
-    getDocs, 
     getDoc, 
     doc, 
     updateDoc, 
@@ -28,11 +27,11 @@ const auth = getAuth(app);
 const container = document.getElementById("ads-container");
 const badge = document.getElementById("counter-badge");
 
-let activeTab = 'vip'; // Дефолт катары VIP жарнамалар көрсөтүлөт ('vip' же 'normal')
+let activeTab = 'vip'; // Дефолт катары VIP жарнамалар көрсөтүлөт
 let allPendingRequests = []; // Күтүүдөгү сурамдар
 let allActiveAds = [];       // Активдүү жарнамалар
 
-// ImgBB же башка сүрөт шилтемелерин ондоо
+// ImgBB же башка сүрөт шилтемелерин оңдоо
 function fixImageUrl(url) {
     if (!url || typeof url !== 'string') return "";
     let cleanUrl = url.trim();
@@ -104,13 +103,12 @@ function renderCurrentTab() {
     let count = 0;
 
     if (activeTab === 'vip') {
-        // VIP Табында: Адегенде текшерүүнү күткөн VIP сурамдар, андан соң активдүү VIP жарнамалар чыгат
         const pendingVip = allPendingRequests.filter(req => req.status === "pending" || req.status === "pending_approval");
         const activeVip = allActiveAds.filter(ad => ad.isVip === true || ad.type === "vip");
 
         count = pendingVip.length + activeVip.length;
 
-        // Күтүүдөгү VIP сурамдар (Ырастоо/Четке кагуу баскычтары менен)
+        // Күтүүдөгү VIP сурамдар
         pendingVip.forEach(req => {
             const docId = req.docId;
             const sourceCol = req.sourceCol;
@@ -161,7 +159,7 @@ function renderCurrentTab() {
             `;
         });
 
-        // Активдүү VIP Жарнамалар (Өчүрүү баскычы менен)
+        // Активдүү VIP Жарнамалар
         activeVip.forEach(ad => {
             const rawImg = Array.isArray(ad.images) && ad.images.length > 0 ? ad.images[0] : (ad.image || "");
             const adImg = fixImageUrl(rawImg);
@@ -266,7 +264,6 @@ window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
             finalExpiresAt = baseTime + addedMs;
         }
 
-        // Жарнаманын статусун жана VIP мөөнөтүн узартуу
         await updateDoc(adRef, { 
             isVip: true,
             type: "vip",
@@ -275,7 +272,6 @@ window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
             updatedAt: nowMs
         });
 
-        // Сурамды өчүрүү же статусун узартуу
         if (sourceCol === "vip_requests") {
             const reqRef = doc(db, "vip_requests", requestId);
             await updateDoc(reqRef, { status: "approved" });
@@ -323,7 +319,6 @@ function removeCardAnimation(requestId) {
     }
 }
 
-// Баштапкы маалыматтарды угуу
 listenToAllData();
 
 // --- ТҮНКҮ/КҮНДҮЗГҮ РЕЖИМ (THEME SWITCHER) ---
@@ -336,7 +331,7 @@ const darkText = document.getElementById('mode-dark');
 
 let isDragging = false;
 let startX = 0;
-let currentX = 0;
+let currentX = 5;
 const minX = 5;
 let maxX = 45;
 let isDark = false;
@@ -502,4 +497,7 @@ if (toggle) {
 
 window.addEventListener('resize', () => {
     calculateMaxX();
-    currentX = isDark 
+    currentX = isDark ? maxX : minX;
+    updatePositions(currentX, false);
+});
+                          
