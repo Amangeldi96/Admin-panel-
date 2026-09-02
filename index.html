@@ -3,66 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Toktogul Reklama | Bento Glass Admin</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Токтогул Базар | Админ Панель</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="bento-wrapper">
-        <!-- Bento Header Component -->
-        <div class="bento-header">
-            <div class="bento-card brand-box">
-                <div class="brand-icon"><i class="fa-solid fa-cube"></i></div>
-                <div class="brand-info">
-                    <h1>Админ панель</h1>
-                    <p>Токтогул реклама</p>
-                </div>
+        <!-- Бренд Шапкасы -->
+        <div class="bento-card brand-box">
+            <div class="brand-icon">
+                <i class="fa-solid fa-bolt"></i>
             </div>
-
-            <div class="bento-controls-row">
-                <div class="bento-card stat-pill">
-                    <span>Бардыгы</span>
-                    <span id="counter-badge">0</span>
-                </div>
-                <!-- Компакттуу узун тумблер -->
-                <div class="toggle" id="toggle">
-                    <div class="knob" id="knob"><span id="icon">☀️</span></div>
-                    <span class="toggle-text text-light" id="mode-light">Жарык</span>
-                    <span class="toggle-text text-dark" id="mode-dark">Караңгы</span>
-                </div>
+            <div class="brand-info">
+                <h1>Токтогул Базар</h1>
+                <p>ЖАРНАМА – ӨНҮГҮҮНҮН КҮЧҮ</p>
             </div>
         </div>
 
-        <!-- VIP / Жөнөкөй Горизонтальный Меню (Tabs) -->
+        <!-- Статистика Панели -->
+        <div class="bento-card stat-pill">
+            <span>Жалпы жарнамалар</span>
+            <span id="counter-badge">0</span>
+        </div>
+
+        <!-- Меню (Табтар) -->
         <div class="bento-card bento-nav-tabs">
             <button class="nav-tab active" id="tab-vip" onclick="switchCategory('vip')">
                 <i class="fa-solid fa-crown" style="color: #eab308;"></i> VIP Жарнамалар
             </button>
             <button class="nav-tab" id="tab-normal" onclick="switchCategory('normal')">
-                <i class="fa-solid fa-list-ul"></i> Жөнөкөй Жарнамалар
+                <i class="fa-solid fa-layer-group"></i> Жөнөкөй
             </button>
         </div>
 
-        <!-- Bento Dynamic Feed Container -->
+        <!-- Жарнамалар динамикалык контейнери -->
         <div id="ads-container">
             <div class="bento-card bento-empty">
-                <i class="fa-solid fa-spinner fa-spin" style="color: #6366f1;"></i>
-                <p>Маалыматтар жүктөлүүдө...</p>
+                <i class="fa-solid fa-spinner fa-spin" style="color: #a855f7; font-size:24px;"></i>
+                <p style="margin-top:10px;">Маалыматтар жүктөлүүдө...</p>
             </div>
         </div>
     </div>
 
-    <!-- Image Preview Modal Component -->
+    <!-- Сүрөттү чоңойтуучу модалка -->
     <div class="image-modal" id="imageModal" onclick="closeImageModal()">
         <div class="modal-content-wrapper" onclick="event.stopPropagation()">
             <button class="modal-close-btn" onclick="closeImageModal()"><i class="fa-solid fa-xmark"></i></button>
             <img id="modalImageElement" src="" alt="Zoomed Image">
         </div>
     </div>
-  
+
     <script type="module" src="script.js"></script>
 </body>
-                                                                                  </html>
-                                                                                  
+</html>
