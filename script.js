@@ -3,10 +3,11 @@ import {
     getFirestore, 
     collection, 
     getDocs, 
-    getDoc, // <- Ушул жерге getDoc кошулду
+    getDoc, 
     doc, 
     updateDoc, 
-    deleteDoc 
+    deleteDoc,
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -27,12 +28,14 @@ const auth = getAuth(app);
 const container = document.getElementById("ads-container");
 const badge = document.getElementById("counter-badge");
 
+let activeTab = 'vip'; // Дефолт катары VIP жарнамалар көрсөтүлөт ('vip' же 'normal')
+let allPendingRequests = []; // Күтүүдөгү сурамдар
+let allActiveAds = [];       // Активдүү жарнамалар
+
 // ImgBB же башка сүрөт шилтемелерин ондоо
 function fixImageUrl(url) {
     if (!url || typeof url !== 'string') return "";
     let cleanUrl = url.trim();
-    
-    // ibb.co/code шилтемелерин түз сүрөт серверине айландыруу
     if (cleanUrl.includes("ibb.co/") && !cleanUrl.includes("i.ibb.co/")) {
         cleanUrl = cleanUrl.replace("ibb.co/", "i.ibb.co/") + ".jpg";
     }
@@ -48,6 +51,7 @@ window.openImageModal = function(url) {
     if (modal && modalImg) {
         modalImg.src = url;
         modal.classList.add("active");
+        modal.style.display = "flex";
     } else {
         window.open(url, "_blank");
     }
@@ -57,159 +61,193 @@ window.closeImageModal = function() {
     const modal = document.getElementById("imageModal");
     if (modal) {
         modal.classList.remove("active");
+        modal.style.display = "none";
     }
 };
 
-// Текшерүүнү күткөн сурамдарды эки коллекциядан тең алуу (vip_requests жана vip_ads)
-async function fetchPendingAds() {
+// 1. БАРДЫК ЖАРНАМАЛАРДЫ ЖАНА СУРАМДАРДЫ АЛУУ (Realtime listeners)
+function listenToAllData() {
     if (!container) return;
 
-    try {
-        // Эки коллекцияны тең параллелдүү сурап алуу
-        const [requestsSnap, adsSnap] = await Promise.all([
-            getDocs(collection(db, "vip_requests")).catch(() => ({ forEach: () => {} })),
-            getDocs(collection(db, "vip_ads")).catch(() => ({ forEach: () => {} }))
-        ]);
-
-        let html = "";
-        let count = 0;
-        const allItems = [];
-
-        // 1. vip_requests коллекциясынан жыйноо
-        if (requestsSnap && requestsSnap.forEach) {
-            requestsSnap.forEach((docSnap) => {
-                allItems.push({
-                    docId: docSnap.id,
-                    sourceCol: "vip_requests",
-                    data: docSnap.data()
-                });
+    // A) VIP Сурамдарды алуу (vip_requests)
+    onSnapshot(collection(db, "vip_requests"), (snapshot) => {
+        allPendingRequests = [];
+        snapshot.forEach((docSnap) => {
+            allPendingRequests.push({
+                docId: docSnap.id,
+                sourceCol: "vip_requests",
+                ...docSnap.data()
             });
-        }
-
-        // 2. vip_ads коллекциясынан жыйноо
-        if (adsSnap && adsSnap.forEach) {
-            adsSnap.forEach((docSnap) => {
-                allItems.push({
-                    docId: docSnap.id,
-                    sourceCol: "vip_ads",
-                    data: docSnap.data()
-                });
-            });
-        }
-
-        allItems.forEach((item) => {
-            const req = item.data;
-            const docId = item.docId;
-            const sourceCol = item.sourceCol;
-            
-            // Статустарды текшерүү
-            if (req.status === "pending" || req.status === "pending_approval") {
-                count++;
-                
-                // Шилтемелерди аныктоо
-                const rawReceipt = req.receiptUrl || req.paymentReceiptImage || req.receipt || "";
-                const receiptImage = fixImageUrl(rawReceipt);
-                
-                let rawAdImg = "";
-                if (Array.isArray(req.images) && req.images.length > 0) {
-                    rawAdImg = req.images[0];
-                } else if (typeof req.images === 'string') {
-                    rawAdImg = req.images;
-                } else if (req.image) {
-                    rawAdImg = req.image;
-                }
-                const adImage = fixImageUrl(rawAdImg);
-
-                const days = req.requestedDays || req.vipDays || 0;
-                const price = req.totalPrice || req.vipTotalCost || 0;
-                const adId = req.adId || docId;
-
-                html += `
-                    <div class="bento-card bento-ad-item" id="card-${docId}">
-                        <div class="media-preview-cluster" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            ${adImage ? `
-                                <div class="media-thumb" onclick="openImageModal('${adImage}')" style="cursor:pointer;">
-                                    <img src="${adImage}" alt="Ad" onError="this.onerror=null; this.src='https://via.placeholder.com/150?text=Сүрөт+ката';" style="width:70px; height:70px; object-fit:cover; border-radius:8px;">
-                                    <span>Жарнама</span>
-                                </div>
-                            ` : ''}
-
-                            ${receiptImage ? `
-                                <div class="media-thumb" style="cursor:pointer; position:relative;">
-                                    <img src="${receiptImage}" 
-                                         alt="Чек" 
-                                         onclick="openImageModal('${receiptImage}')"
-                                         onError="this.style.display='none'; document.getElementById('fallback-link-${docId}').style.display='block';" 
-                                         style="width:70px; height:70px; object-fit:cover; border-radius:8px; border:1px solid #a855f7;">
-                                    <span onclick="openImageModal('${receiptImage}')">Чек</span>
-                                    
-                                    <a id="fallback-link-${docId}" 
-                                       href="${rawReceipt}" 
-                                       target="_blank" 
-                                       style="display:none; font-size:11px; color:#3b82f6; text-decoration:underline; word-break:break-all; margin-top:4px;">
-                                        🔗 Чекке шилтеме
-                                    </a>
-                                </div>
-                            ` : '<div style="font-size:11px; color:#ef4444; display:flex; align-items:center;">Чек жок</div>'}
-                        </div>
-
-                        <div class="ad-details-stack" style="margin-top:10px;">
-                            <div class="ad-link-row">
-                                <span style="font-size: 14px; font-weight: 700; color: #a855f7;">
-                                    ${req.adTitle || req.title || 'VIP Жарнама ID: ' + docId}
-                                </span>
-                            </div>
-                            <div class="ad-meta-tags" style="display:flex; flex-direction:column; gap:4px; font-size:12px; margin-top:6px;">
-                                <span>Булагы: <strong style="color:#a855f7;">${sourceCol}</strong></span>
-                                <span>Email: <strong>${req.userEmail || req.email || 'Көрсөтүлгөн эмес'}</strong></span>
-                                <span>Мөөнөтү: <strong class="dynamic-text">${days} күн</strong></span>
-                                <span>Баасы: <strong class="dynamic-text">${price} сом</strong></span>
-                                ${rawReceipt ? `<span style="font-size:10px; color:#6b7280; word-break:break-all;">Шилтеме: <a href="${rawReceipt}" target="_blank" style="color:#3b82f6;">${rawReceipt}</a></span>` : ''}
-                            </div>
-                        </div>
-
-                        <div class="bento-actions" style="margin-top:12px; display:flex; gap:10px;">
-                            <button class="bento-btn btn-yes" onclick="approveAd('${docId}', '${adId}', ${days}, '${sourceCol}')" title="Ырастоо">
-                                <i class="fa-solid fa-check"></i>
-                            </button>
-                            <button class="bento-btn btn-no" onclick="rejectAd('${docId}', '${sourceCol}')" title="Четке кагуу">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
         });
+        renderCurrentTab();
+    }, (err) => console.error("vip_requests катасы:", err));
 
-        if (count === 0) {
-            if (badge) badge.innerText = `0`;
-            container.innerHTML = `
-                <div class="bento-card bento-empty">
-                    <i class="fa-regular fa-circle-check"></i>
-                    <p>Текшерүүнү күткөн жарнамалар калбады.</p>
-                </div>`;
-        } else {
-            if (badge) badge.innerText = `${count}`;
-            container.innerHTML = html;
-        }
-        
-        updateThemeColors(currentProgress);
-
-    } catch (error) {
-        console.error("Ката кетти:", error);
-        container.innerHTML = `<div class="bento-card bento-empty" style="color: #ef4444;">Ката кетти: ${error.message}</div>`;
-    }
+    // B) Негизги жарнамаларды алуу (ads коллекциясы)
+    onSnapshot(collection(db, "ads"), (snapshot) => {
+        allActiveAds = [];
+        snapshot.forEach((docSnap) => {
+            allActiveAds.push({
+                docId: docSnap.id,
+                sourceCol: "ads",
+                ...docSnap.data()
+            });
+        });
+        renderCurrentTab();
+    }, (err) => console.error("ads катасы:", err));
 }
 
-// VIP Жарнаманы ырастоо функциясы (ОҢДОЛГОН ЛОГИКА)
+// 2. ГОРИЗОНТАЛЬНЫЙ МЕНЮ АРКЫЛУУ КӨРСӨТҮҮ (Render)
+function renderCurrentTab() {
+    if (!container) return;
+
+    let html = "";
+    let count = 0;
+
+    if (activeTab === 'vip') {
+        // VIP Табында: Адегенде текшерүүнү күткөн VIP сурамдар, андан соң активдүү VIP жарнамалар чыгат
+        const pendingVip = allPendingRequests.filter(req => req.status === "pending" || req.status === "pending_approval");
+        const activeVip = allActiveAds.filter(ad => ad.isVip === true || ad.type === "vip");
+
+        count = pendingVip.length + activeVip.length;
+
+        // Күтүүдөгү VIP сурамдар (Ырастоо/Четке кагуу баскычтары менен)
+        pendingVip.forEach(req => {
+            const docId = req.docId;
+            const sourceCol = req.sourceCol;
+            const rawReceipt = req.receiptUrl || req.paymentReceiptImage || req.receipt || "";
+            const receiptImage = fixImageUrl(rawReceipt);
+            
+            let rawAdImg = Array.isArray(req.images) && req.images.length > 0 ? req.images[0] : (req.images || req.image || "");
+            const adImage = fixImageUrl(rawAdImg);
+            const days = req.requestedDays || req.vipDays || 0;
+            const price = req.totalPrice || req.vipTotalCost || 0;
+            const adId = req.adId || docId;
+
+            html += `
+                <div class="bento-card bento-ad-item" id="card-${docId}" style="border: 1.5px solid #a855f7;">
+                    <div style="font-size:11px; font-weight:700; color:#a855f7; margin-bottom:8px;">⏳ ЫРАСТООНУ КҮТҮҮДӨ (VIP)</div>
+                    <div class="media-preview-cluster" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        ${adImage ? `
+                            <div class="media-thumb" onclick="openImageModal('${adImage}')" style="cursor:pointer;">
+                                <img src="${adImage}" alt="Ad" onError="this.onerror=null; this.src='https://via.placeholder.com/150?text=Сүрөт+ката';" style="width:70px; height:70px; object-fit:cover; border-radius:8px;">
+                            </div>
+                        ` : ''}
+
+                        ${receiptImage ? `
+                            <div class="media-thumb" style="cursor:pointer; position:relative;">
+                                <img src="${receiptImage}" alt="Чек" onclick="openImageModal('${receiptImage}')" style="width:70px; height:70px; object-fit:cover; border-radius:8px; border:1px solid #a855f7;">
+                            </div>
+                        ` : '<div style="font-size:11px; color:#ef4444;">Чек жок</div>'}
+                    </div>
+
+                    <div class="ad-details-stack" style="margin-top:10px;">
+                        <span style="font-size: 14px; font-weight: 700;">${req.adTitle || req.title || 'VIP Жарнама ID: ' + docId}</span>
+                        <div class="ad-meta-tags" style="display:flex; flex-direction:column; gap:4px; font-size:12px; margin-top:6px;">
+                            <span>Email: <strong>${req.userEmail || req.email || 'Көрсөтүлгөн эмес'}</strong></span>
+                            <span>Мөөнөтү: <strong class="dynamic-text">${days} күн</strong></span>
+                            <span>Баасы: <strong class="dynamic-text">${price} сом</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="bento-actions" style="margin-top:12px; display:flex; gap:10px;">
+                        <button class="bento-btn btn-yes" onclick="approveAd('${docId}', '${adId}', ${days}, '${sourceCol}')" title="Ырастоо">
+                            <i class="fa-solid fa-check"></i> Ырастоо
+                        </button>
+                        <button class="bento-btn btn-no" onclick="rejectAd('${docId}', '${sourceCol}')" title="Четке кагуу">
+                            <i class="fa-solid fa-xmark"></i> Четке кагуу
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Активдүү VIP Жарнамалар (Өчүрүү баскычы менен)
+        activeVip.forEach(ad => {
+            const rawImg = Array.isArray(ad.images) && ad.images.length > 0 ? ad.images[0] : (ad.image || "");
+            const adImg = fixImageUrl(rawImg);
+
+            html += `
+                <div class="bento-card bento-ad-item" id="card-${ad.docId}">
+                    <div style="font-size:11px; font-weight:700; color:#eab308; margin-bottom:8px;">👑 АКТИВДҮҮ VIP</div>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        ${adImg ? `<img src="${adImg}" onclick="openImageModal('${adImg}')" style="width:60px; height:60px; object-fit:cover; border-radius:10px; cursor:pointer;">` : ''}
+                        <div>
+                            <h4 style="font-size:14px; margin-bottom:4px;">${ad.title || 'VIP Жарнама'}</h4>
+                            <p style="font-size:12px; opacity:0.8;">${ad.price ? ad.price + ' сом' : 'Баасы жок'}</p>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+                        <button class="bento-btn btn-no" onclick="deleteAd('${ad.docId}', 'ads')" style="font-size:12px; padding:6px 12px;">
+                            <i class="fa-solid fa-trash-can"></i> Өчүрүү
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+    } else {
+        // Жөнөкөй (Normal) Табында
+        const normalAds = allActiveAds.filter(ad => !ad.isVip && ad.type !== "vip");
+        count = normalAds.length;
+
+        normalAds.forEach(ad => {
+            const rawImg = Array.isArray(ad.images) && ad.images.length > 0 ? ad.images[0] : (ad.image || "");
+            const adImg = fixImageUrl(rawImg);
+
+            html += `
+                <div class="bento-card bento-ad-item" id="card-${ad.docId}">
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        ${adImg ? `<img src="${adImg}" onclick="openImageModal('${adImg}')" style="width:60px; height:60px; object-fit:cover; border-radius:10px; cursor:pointer;">` : ''}
+                        <div>
+                            <h4 style="font-size:14px; margin-bottom:4px;">${ad.title || 'Жөнөкөй Жарнама'}</h4>
+                            <p style="font-size:12px; opacity:0.8;">${ad.price ? ad.price + ' сом' : 'Баасы жок'}</p>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+                        <button class="bento-btn btn-no" onclick="deleteAd('${ad.docId}', 'ads')" style="font-size:12px; padding:6px 12px;">
+                            <i class="fa-solid fa-trash-can"></i> Өчүрүү
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    if (badge) badge.innerText = `${count}`;
+
+    if (count === 0) {
+        container.innerHTML = `
+            <div class="bento-card bento-empty">
+                <i class="fa-regular fa-circle-check"></i>
+                <p>Бул бөлүмдө жарнамалар жок.</p>
+            </div>`;
+    } else {
+        container.innerHTML = html;
+    }
+
+    updateThemeColors(currentProgress);
+}
+
+// 3. ТАБДЫ КӨТӨРҮҮ ФУНКЦИЯСЫ
+window.switchCategory = function(category) {
+    activeTab = category;
+    const tabVip = document.getElementById('tab-vip');
+    const tabNormal = document.getElementById('tab-normal');
+
+    if (tabVip) tabVip.classList.toggle('active', category === 'vip');
+    if (tabNormal) tabNormal.classList.toggle('active', category === 'normal');
+
+    renderCurrentTab();
+};
+
+// 4. VIP ЖАРНАМАНЫ ЫРАСТОО
 window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
     try {
         const nowMs = Date.now();
         const addedMs = Number(extraDays || 0) * 24 * 60 * 60 * 1000;
         const targetAdId = (adId && adId !== 'undefined') ? adId : requestId;
 
-        // 1. vip_ads коллекциясынан учурдагы документти окуп алуу
-        const adRef = doc(db, "vip_ads", targetAdId);
+        const adRef = doc(db, "ads", targetAdId);
         const adSnap = await getDoc(adRef);
 
         let finalExpiresAt = nowMs + addedMs;
@@ -218,27 +256,26 @@ window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
             const currentData = adSnap.data();
             let currentExpireMs = 0;
 
-            // Базадагы expiresAt маанисин алуу
             if (currentData.expiresAt?.toMillis) {
                 currentExpireMs = currentData.expiresAt.toMillis();
             } else if (typeof currentData.expiresAt === 'number') {
                 currentExpireMs = currentData.expiresAt;
             }
 
-            // Эгер мөөнөтү али бүтө элек болсо (currentExpireMs > nowMs),
-            // калган убакытка жаңы күндү кошобуз. Бүтүп калган болсо, азыркы убакытка кошобуз.
             const baseTime = currentExpireMs > nowMs ? currentExpireMs : nowMs;
             finalExpiresAt = baseTime + addedMs;
         }
 
-        // 2. vip_ads ичине мөөнөттү жаңылап сактоо
+        // Жарнаманын статусун жана VIP мөөнөтүн узартуу
         await updateDoc(adRef, { 
+            isVip: true,
+            type: "vip",
             expiresAt: finalExpiresAt,
             status: "active",
             updatedAt: nowMs
         });
 
-        // 3. Эгер vip_requests коллекциясынан болсо, статусун "approved" кылуу
+        // Сурамды өчүрүү же статусун узартуу
         if (sourceCol === "vip_requests") {
             const reqRef = doc(db, "vip_requests", requestId);
             await updateDoc(reqRef, { status: "approved" });
@@ -251,12 +288,11 @@ window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
     }
 };
 
-// Жарнаманы четке кагуу
+// 5. ЖАРНАМАНЫ ЖАНА СУРАМДАРДЫ ӨЧҮРҮҮ
 window.rejectAd = async function(requestId, sourceCol) {
-    if (confirm("Бул жарнама сурамын четке кагып өчүргүңүз келеби?")) {
+    if (confirm("Бул VIP сурамды четке кагууну каалайсызбы?")) {
         try {
-            const targetCol = sourceCol || "vip_requests";
-            await deleteDoc(doc(db, targetCol, requestId));
+            await deleteDoc(doc(db, sourceCol || "vip_requests", requestId));
             removeCardAnimation(requestId);
         } catch (e) {
             alert("Ката кетти: " + e.message);
@@ -264,7 +300,17 @@ window.rejectAd = async function(requestId, sourceCol) {
     }
 };
 
-// Ийгиликтүү же четке кагылган элементти анимация менен өчүрүү
+window.deleteAd = async function(docId, colName) {
+    if (confirm("Чын эле бул жарнаманы өчүргүңүз келеби?")) {
+        try {
+            await deleteDoc(doc(db, colName || "ads", docId));
+            removeCardAnimation(docId);
+        } catch (e) {
+            alert("Өчүрүүдө ката чыкты: " + e.message);
+        }
+    }
+};
+
 function removeCardAnimation(requestId) {
     const card = document.getElementById(`card-${requestId}`);
     if (card) {
@@ -273,30 +319,14 @@ function removeCardAnimation(requestId) {
         card.style.opacity = '0';
         setTimeout(() => {
             card.remove();
-            checkEmptyState();
         }, 300);
     }
 }
 
-function checkEmptyState() {
-    if (!container) return;
-    const cards = container.getElementsByClassName("bento-ad-item");
-    if (cards.length === 0) {
-        if (badge) badge.innerText = `0`;
-        container.innerHTML = `
-            <div class="bento-card bento-empty">
-                <i class="fa-regular fa-circle-check"></i>
-                <p>Текшерүүнү күткөн жарнамалар калбады.</p>
-            </div>`;
-    } else {
-        if (badge) badge.innerText = `${cards.length}`;
-    }
-}
+// Баштапкы маалыматтарды угуу
+listenToAllData();
 
-// Баштапкы маалыматтарды жүктөө
-fetchPendingAds();
-
-// --- Түнкү/Күндүзгү Режим Логикасы ---
+// --- ТҮНКҮ/КҮНДҮЗГҮ РЕЖИМ (THEME SWITCHER) ---
 const body = document.body;
 const toggle = document.getElementById('toggle');
 const knob = document.getElementById('knob');
@@ -470,13 +500,6 @@ if (toggle) {
     });
 }
 
-// Экран размери өзгөргөндө тумблерди тууралоо
 window.addEventListener('resize', () => {
     calculateMaxX();
-    currentX = isDark ? maxX : minX;
-    updatePositions(currentX, false);
-});
-
-// Баштапкы абалды орнотуу
-currentX = minX;
-updatePositions(currentX, false);
+    currentX = isDark 
