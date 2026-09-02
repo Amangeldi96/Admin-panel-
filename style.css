@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -7,74 +9,80 @@
 }
 
 body {
-    background-color: #e5e5e5;
+    background: #0b071a url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop') no-repeat center center fixed;
+    background-size: cover;
     min-height: 100vh;
-    padding: 20px 15px;
+    padding: 24px 16px;
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    color: #24292f;
-    transition: background-color 0.3s ease;
+    color: #ffffff;
 }
 
-/* Bento Grid Container */
+/* Негизги контейнер */
 .bento-wrapper {
     width: 100%;
-    max-width: 500px;
+    max-width: 460px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
 }
 
-/* Bento Top Bar */
-.bento-header {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
+/* Glassmorphism Карточкасы */
 .bento-card {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.3));
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1.5px solid rgba(255, 255, 255, 0.8);
-    border-radius: 20px;
-    padding: 16px 20px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06), inset 0 2px 4px rgba(255, 255, 255, 0.8);
-    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    background: rgba(23, 15, 41, 0.75);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 
+                inset 0 1px 1px rgba(255, 255, 255, 0.1);
 }
 
+/* Башкы логотип жана Header */
 .brand-box {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 12px;
+    text-align: center;
+    padding: 28px 20px 20px 20px;
+    position: relative;
 }
 
 .brand-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #6366f1, #a855f7);
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7, #ec4899);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 32px;
     color: white;
-    box-shadow: 0 6px 15px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 10px 30px rgba(168, 85, 247, 0.5);
+    margin-bottom: 14px;
 }
 
 .brand-info h1 {
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #ffffff 30%, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .brand-info p {
     font-size: 11px;
-    color: #64748b;
+    color: #94a3b8;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 4px;
 }
 
-/* Башкаруу панели */
+/* Башкаруу панели (Статистика жана Тумблер) */
 .bento-controls-row {
     display: grid;
     grid-template-columns: 110px 1fr;
@@ -87,69 +95,48 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 10px;
-    height: 65px;
+    height: 60px;
     border-radius: 20px;
+    padding: 0;
 }
 
 .stat-pill span:first-child {
     font-size: 10px;
-    color: #64748b;
+    color: #94a3b8;
     text-transform: uppercase;
     font-weight: 600;
 }
 
 .stat-pill span:last-child {
-    font-size: 20px;
-    font-weight: 700;
-    color: #a855f7;
-    margin-top: 2px;
+    font-size: 22px;
+    font-weight: 800;
+    color: #c084fc;
 }
 
-/* Тумблер (Theme Switcher) */
+/* Тумблер Стили */
 .toggle {
     position: relative;
     width: 100%;
-    height: 65px;
-    border-radius: 35px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(240, 240, 240, 0.4));
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1.5px solid rgba(255, 255, 255, 0.9);
-    border-left: 1.5px solid rgba(255, 255, 255, 0.7);
-    border-right: 1.5px solid rgba(255, 255, 255, 0.4);
-    border-bottom: 1.5px solid rgba(0, 0, 0, 0.15);
-    box-shadow: 
-        0 10px 25px rgba(0, 0, 0, 0.08),
-        inset 0 2px 4px rgba(255, 255, 255, 0.8),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.05);
+    height: 60px;
+    border-radius: 30px;
+    background: rgba(15, 10, 30, 0.8);
+    border: 1px solid rgba(168, 85, 247, 0.3);
     display: flex;
     align-items: center;
-    cursor: grab;
+    cursor: pointer;
     user-select: none;
     overflow: hidden;
 }
 
-.toggle:active { 
-    cursor: grabbing; 
-}
-
 .knob {
     position: absolute;
-    left: 5px;
-    top: 5px;
-    width: 55px;
-    height: 55px;
+    left: 4px;
+    top: 4px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(230, 230, 230, 0.8));
-    border-top: 1.5px solid rgba(255, 255, 255, 1);
-    border-left: 1.5px solid rgba(255, 255, 255, 0.9);
-    border-right: 1.5px solid rgba(255, 255, 255, 0.5);
-    border-bottom: 1.5px solid rgba(0, 0, 0, 0.15);
-    box-shadow: 
-        0 6px 15px rgba(0, 0, 0, 0.12),
-        inset 0 2px 3px rgba(255, 255, 255, 1),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -157,119 +144,90 @@ body {
 }
 
 #icon {
-    font-size: 24px;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-    display: inline-block;
-    transition: transform 0.3s ease;
+    font-size: 22px;
 }
 
 .toggle-text {
     position: absolute;
-    font-size: 16px;
-    font-weight: 600;
-    color: #555;
-    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 700;
+    color: #cbd5e1;
     pointer-events: none;
 }
 
-.text-light { right: 25px; opacity: 1; }
+.text-light { right: 20px; opacity: 1; }
 .text-dark { left: -80px; opacity: 0; }
 
-/* ГОРИЗОНТАЛЬНЫЙ МЕНЮ (TABS) */
+/* Горизонтальный меню (Tabs) */
 .bento-nav-tabs {
     display: flex;
     gap: 8px;
     padding: 6px;
-    border-radius: 16px;
+    border-radius: 20px;
 }
 
 .nav-tab {
     flex: 1;
-    padding: 10px;
+    padding: 12px;
     border: none;
-    border-radius: 12px;
+    border-radius: 14px;
     background: transparent;
     font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
+    font-weight: 700;
+    color: #94a3b8;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    transition: all 0.25s ease;
-}
-
-.nav-tab:hover {
-    color: #334155;
+    gap: 8px;
+    transition: all 0.3s ease;
 }
 
 .nav-tab.active {
-    background: linear-gradient(135deg, #6366f1, #a855f7);
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
     color: #ffffff;
-    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35);
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
 }
 
-/* Main Feed Grid */
+/* Dynamic Feed & Item Card */
 #ads-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
 }
 
-/* Bento Item Card */
 .bento-ad-item {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
     position: relative;
-    overflow: hidden;
-    padding: 16px 18px;
 }
 
-.bento-ad-item::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    width: 4px;
-    background: linear-gradient(to bottom, #6366f1, #a855f7);
-}
-
-/* Media Preview Thumbnails */
 .media-preview-cluster {
     display: flex;
-    gap: 8px;
+    gap: 10px;
 }
 
 .media-thumb {
-    width: 60px;
-    height: 60px;
-    border-radius: 10px;
+    width: 70px;
+    height: 70px;
+    border-radius: 14px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(168, 85, 247, 0.3);
     cursor: pointer;
-    position: relative;
-    background: rgba(0,0,0,0.1);
+    background: rgba(0, 0, 0, 0.4);
 }
 
 .media-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.2s;
 }
 
-.media-thumb:hover img { 
-    transform: scale(1.1); 
-}
-
-/* Details info */
 .ad-details-stack {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 
 .ad-meta-tags {
@@ -277,74 +235,74 @@ body {
     flex-direction: column;
     gap: 4px;
     font-size: 12px;
-    color: #64748b;
+    color: #cbd5e1;
 }
 
-/* Action Buttons Cluster */
+.ad-meta-tags strong {
+    color: #c084fc;
+}
+
+/* Ушул баскыч сүрөттөгү «Скачать АПК» стилинде */
 .bento-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 4px;
+    gap: 10px;
+    margin-top: 6px;
 }
 
 .bento-btn {
-    height: 38px;
-    padding: 0 14px;
-    border-radius: 12px;
+    flex: 1;
+    height: 46px;
+    border-radius: 14px;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    transition: all 0.2s;
+    font-size: 14px;
+    font-weight: 700;
+    transition: all 0.25s ease;
 }
 
 .btn-yes {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #ffffff;
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.35);
 }
 
-.btn-yes:hover { 
-    background: #10b981; 
-    color: white; 
+.btn-yes:hover {
+    box-shadow: 0 8px 25px rgba(168, 85, 247, 0.5);
+    transform: translateY(-1px);
 }
 
 .btn-no {
     background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    color: #f87171;
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-.btn-no:hover { 
-    background: #ef4444; 
-    color: white; 
+.btn-no:hover {
+    background: #ef4444;
+    color: white;
 }
 
-/* IMAGE MODAL LIGHTBOX STYLES */
+/* Modal Lightbox */
 .image-modal {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(5, 2, 15, 0.9);
+    backdrop-filter: blur(15px);
     display: none;
     justify-content: center;
     align-items: center;
     z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.3s ease;
 }
 
 .image-modal.active {
     display: flex;
-    opacity: 1;
 }
 
 .modal-content-wrapper {
@@ -352,68 +310,26 @@ body {
     max-width: 90%;
     max-height: 85vh;
     border-radius: 20px;
+    border: 1px solid rgba(168, 85, 247, 0.4);
     overflow: hidden;
-    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-    transform: scale(0.9);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.image-modal.active .modal-content-wrapper {
-    transform: scale(1);
-}
-
-.modal-content-wrapper img {
-    width: 100%;
-    height: auto;
-    max-height: 85vh;
-    display: block;
-    object-fit: contain;
-    background: #000;
 }
 
 .modal-close-btn {
     position: absolute;
     top: 15px;
     right: 15px;
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     background: rgba(0, 0, 0, 0.6);
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: none;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
     cursor: pointer;
-    transition: background 0.2s;
-    z-index: 1010;
 }
 
-.modal-close-btn:hover {
-    background: rgba(239, 68, 68, 0.8);
-}
-
-/* Empty State */
 .bento-empty {
     text-align: center;
-    padding: 30px 15px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    color: #64748b;
-    font-size: 13px;
-}
-
-.bento-empty i { 
-    font-size: 26px; 
-    color: #10b981; 
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-    .bento-actions { 
-        justify-content: flex-start; 
+    padding: 40px 20px;
+    color: #94a3b8;
     }
-    }
+    
