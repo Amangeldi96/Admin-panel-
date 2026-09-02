@@ -176,14 +176,14 @@ body {
 .text-dark { left: -80px; opacity: 0; }
 
 /* ГОРИЗОНТАЛЬНЫЙ МЕНЮ (TABS) */
-.category-tabs {
+.bento-nav-tabs {
     display: flex;
     gap: 8px;
     padding: 6px;
     border-radius: 16px;
 }
 
-.tab-btn {
+.nav-tab {
     flex: 1;
     padding: 10px;
     border: none;
@@ -200,11 +200,11 @@ body {
     transition: all 0.25s ease;
 }
 
-.tab-btn:hover {
+.nav-tab:hover {
     color: #334155;
 }
 
-.tab-btn.active {
+.nav-tab.active {
     background: linear-gradient(135deg, #6366f1, #a855f7);
     color: #ffffff;
     box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35);
@@ -263,17 +263,6 @@ body {
 
 .media-thumb:hover img { 
     transform: scale(1.1); 
-}
-
-.media-thumb span {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    font-size: 9px;
-    background: rgba(0,0,0,0.7);
-    padding: 1px 4px;
-    border-radius: 3px;
-    color: #fff;
 }
 
 /* Details info */
@@ -427,5 +416,4 @@ body {
     .bento-actions { 
         justify-content: flex-start; 
     }
-            }
-                                             
+    }
