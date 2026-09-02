@@ -33,6 +33,7 @@ let rawVipAdsData = [];       // vip_ads
 let rawVipRequestsData = [];  // vip_requests
 let rawAdsData = [];          // ads
 
+// ImgBB же башка сүрөт шилтемелерин ондоо
 function fixImageUrl(url) {
     if (!url || typeof url !== 'string') return "";
     let cleanUrl = url.trim();
@@ -42,6 +43,7 @@ function fixImageUrl(url) {
     return cleanUrl;
 }
 
+// Модалканы башкаруу
 window.openImageModal = function(url) {
     if (!url) return;
     const modal = document.getElementById("imageModal");
@@ -59,10 +61,11 @@ window.closeImageModal = function() {
     if (modal) modal.classList.remove("active");
 };
 
+// Реалдуу убакытта коллекцияларды угуу
 function listenToAllData() {
     if (!container) return;
 
-    // 1. vip_ads
+    // 1. vip_ads коллекциясын угуу
     onSnapshot(collection(db, "vip_ads"), (snapshot) => {
         rawVipAdsData = [];
         snapshot.forEach((docSnap) => {
@@ -71,7 +74,7 @@ function listenToAllData() {
         renderCurrentTab();
     });
 
-    // 2. vip_requests
+    // 2. vip_requests коллекциясын угуу
     onSnapshot(collection(db, "vip_requests"), (snapshot) => {
         rawVipRequestsData = [];
         snapshot.forEach((docSnap) => {
@@ -80,7 +83,7 @@ function listenToAllData() {
         renderCurrentTab();
     });
 
-    // 3. ads
+    // 3. ads коллекциясын угуу
     onSnapshot(collection(db, "ads"), (snapshot) => {
         rawAdsData = [];
         snapshot.forEach((docSnap) => {
@@ -96,27 +99,20 @@ function renderCurrentTab() {
     let count = 0;
 
     if (activeTab === 'vip') {
-        // 1. ЖАҢЫ VIP СУРАМДАР (vip_ads)
+        // А) Уруксат күтүп жаткан жаңы VIP жарнамалар (vip_ads)
         const pendingVipAds = rawVipAdsData.filter(item => 
             item.status === "pending" || item.status === "pending_approval" || !item.status
         );
 
-        // 2. АКТИВДҮҮ VIPтер
-        const approvedVipAds = rawVipAdsData.filter(item => 
-            item.status === "approved" || item.status === "active"
-        );
-        const adsColVip = rawAdsData.filter(ad => ad.isVip === true || ad.type === "vip");
-        
-        const activeVipMap = new Map();
-        [...approvedVipAds, ...adsColVip].forEach(ad => activeVipMap.set(ad.docId, ad));
-        const combinedActiveVip = Array.from(activeVipMap.values());
-
-        // 3. МӨӨНӨТ УЗАРТУУ СУРАМДАРЫ (vip_requests)
+        // Б) Мөөнөт узартуу сурамдары (vip_requests)
         const extendRequests = rawVipRequestsData.filter(req => req.status !== "approved");
 
-        count = pendingVipAds.length + extendRequests.length + combinedActiveVip.length;
+        // В) Активдүү (кабыл алынган) VIP Жарнамалар (ads коллекциясынан)
+        const activeVipAds = rawAdsData.filter(ad => ad.isVip === true || ad.type === "vip");
 
-        // А) Жаңы VIP Жарнамалар (vip_ads)
+        count = pendingVipAds.length + extendRequests.length + activeVipAds.length;
+
+        // 1. Жаңы VIP сурамдар (vip_ads)
         pendingVipAds.forEach(item => {
             const rawReceipt = item.receiptUrl || item.paymentReceiptImage || item.receipt || "";
             const receiptImage = fixImageUrl(rawReceipt);
@@ -124,10 +120,11 @@ function renderCurrentTab() {
             const adImage = fixImageUrl(rawAdImg);
             const days = item.requestedDays || item.vipDays || item.days || 0;
             const price = item.totalPrice || item.vipTotalCost || item.price || 0;
+            const adId = item.adId || item.docId;
 
             html += `
                 <div class="bento-card bento-ad-item" id="card-${item.docId}">
-                    <div style="font-size:11px; font-weight:800; color:#c084fc; letter-spacing:1px;">✨ ЖАҢЫ VIP СУРАМ</div>
+                    <div style="font-size:11px; font-weight:800; color:#c084fc; letter-spacing:1px; margin-bottom:8px;">✨ ЖАҢЫ VIP ЖАРНАМА</div>
                     <div class="media-preview-cluster">
                         ${adImage ? `<div class="media-thumb" onclick="openImageModal('${adImage}')"><img src="${adImage}"></div>` : ''}
                         ${receiptImage ? `<div class="media-thumb" onclick="openImageModal('${receiptImage}')"><img src="${receiptImage}"></div>` : ''}
@@ -136,16 +133,16 @@ function renderCurrentTab() {
                     <div class="ad-details-stack">
                         <span style="font-size: 15px; font-weight: 700;">${item.adTitle || item.title || 'Жаңы VIP Жарнама'}</span>
                         <div class="ad-meta-tags">
-                            <span>Email: <strong>${item.userEmail || item.email || 'Жок'}</strong></span>
+                            <span>Email: <strong>${item.userEmail || item.email || 'Көрсөтүлгөн эмес'}</strong></span>
                             <span>Мөөнөтү: <strong>${days} күн</strong> | Баасы: <strong>${price} сом</strong></span>
                         </div>
                     </div>
 
                     <div class="bento-actions">
-                        <button class="bento-btn btn-yes" onclick="approveNewVipFromVipAds('${item.docId}')">
+                        <button class="bento-btn btn-yes" onclick="approveAd('${item.docId}', '${adId}', ${days}, 'vip_ads')">
                             <i class="fa-solid fa-check"></i> Уруксат берүү
                         </button>
-                        <button class="bento-btn btn-no" onclick="removeItem('${item.docId}', 'vip_ads')">
+                        <button class="bento-btn btn-no" onclick="rejectAd('${item.docId}', 'vip_ads')">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
@@ -153,31 +150,32 @@ function renderCurrentTab() {
             `;
         });
 
-        // Б) VIP Мөөнөтүн узартуу сурамдары (vip_requests)
+        // 2. Мөөнөтүн узартуу сурамдары (vip_requests)
         extendRequests.forEach(req => {
             const rawReceipt = req.receiptUrl || req.paymentReceiptImage || req.receipt || "";
             const receiptImage = fixImageUrl(rawReceipt);
             const days = req.requestedDays || req.vipDays || req.days || 0;
+            const adId = req.adId || req.targetAdId || req.postDocId || req.docId;
 
             html += `
                 <div class="bento-card bento-ad-item" id="card-${req.docId}">
-                    <div style="font-size:11px; font-weight:800; color:#38bdf8; letter-spacing:1px;">⏳ VIP УЗАРТУУ СУРАМЫ</div>
+                    <div style="font-size:11px; font-weight:800; color:#38bdf8; letter-spacing:1px; margin-bottom:8px;">⏳ VIP МӨӨНӨТ УЗАРТУУ</div>
                     <div class="media-preview-cluster">
                         ${receiptImage ? `<div class="media-thumb" onclick="openImageModal('${receiptImage}')"><img src="${receiptImage}"></div>` : ''}
                     </div>
 
                     <div class="ad-details-stack">
-                        <span style="font-size: 15px; font-weight: 700;">${req.adTitle || req.title || 'Жарнама ID: ' + (req.adId || req.docId)}</span>
+                        <span style="font-size: 15px; font-weight: 700;">${req.adTitle || req.title || 'Жарнама ID: ' + adId}</span>
                         <div class="ad-meta-tags">
                             <span>Кошула турган мөөнөт: <strong>+${days} күн</strong></span>
                         </div>
                     </div>
 
                     <div class="bento-actions">
-                        <button class="bento-btn btn-yes" onclick="approveExtendVipFromRequests('${req.docId}')">
+                        <button class="bento-btn btn-yes" onclick="approveAd('${req.docId}', '${adId}', ${days}, 'vip_requests')">
                             <i class="fa-solid fa-clock-rotate-left"></i> Узарттыруу
                         </button>
-                        <button class="bento-btn btn-no" onclick="removeItem('${req.docId}', 'vip_requests')">
+                        <button class="bento-btn btn-no" onclick="rejectAd('${req.docId}', 'vip_requests')">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
@@ -185,14 +183,14 @@ function renderCurrentTab() {
             `;
         });
 
-        // В) Активдүү VIP жарнамалар
-        combinedActiveVip.forEach(ad => {
+        // 3. Активдүү VIP Жарнамалар (ads базасынан)
+        activeVipAds.forEach(ad => {
             const rawImg = Array.isArray(ad.images) && ad.images.length > 0 ? ad.images[0] : (ad.image || "");
             const adImg = fixImageUrl(rawImg);
 
             html += `
                 <div class="bento-card bento-ad-item" id="card-${ad.docId}">
-                    <div style="font-size:11px; font-weight:800; color:#eab308; letter-spacing:1px;">👑 АКТИВДҮҮ VIP</div>
+                    <div style="font-size:11px; font-weight:800; color:#eab308; letter-spacing:1px; margin-bottom:8px;">👑 АКТИВДҮҮ VIP</div>
                     <div style="display:flex; gap:12px; align-items:center;">
                         ${adImg ? `<img src="${adImg}" onclick="openImageModal('${adImg}')" style="width:55px; height:55px; object-fit:cover; border-radius:12px;">` : ''}
                         <div>
@@ -200,8 +198,8 @@ function renderCurrentTab() {
                             <p style="font-size:12px; color:#c084fc; font-weight:700;">${ad.price ? ad.price + ' сом' : ''}</p>
                         </div>
                     </div>
-                    <div style="display:flex; justify-content:flex-end;">
-                        <button class="bento-btn btn-no" onclick="removeItem('${ad.docId}', '${ad.sourceCol || 'ads'}')" style="height:36px; font-size:12px;">
+                    <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+                        <button class="bento-btn btn-no" onclick="rejectAd('${ad.docId}', 'ads')" style="height:36px; font-size:12px;">
                             <i class="fa-solid fa-trash-can"></i> Өчүрүү
                         </button>
                     </div>
@@ -227,8 +225,8 @@ function renderCurrentTab() {
                             <p style="font-size:12px; color:#cbd5e1;">${ad.price ? ad.price + ' сом' : ''}</p>
                         </div>
                     </div>
-                    <div style="display:flex; justify-content:flex-end;">
-                        <button class="bento-btn btn-no" onclick="removeItem('${ad.docId}', 'ads')" style="height:36px; font-size:12px;">
+                    <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+                        <button class="bento-btn btn-no" onclick="rejectAd('${ad.docId}', 'ads')" style="height:36px; font-size:12px;">
                             <i class="fa-solid fa-trash-can"></i> Өчүрүү
                         </button>
                     </div>
@@ -239,7 +237,7 @@ function renderCurrentTab() {
 
     if (badge) badge.innerText = `${count}`;
     if (count === 0) {
-        container.innerHTML = `<div class="bento-card bento-empty"><p>Бул бөлүмдө тизме бош.</p></div>`;
+        container.innerHTML = `<div class="bento-card bento-empty"><p>Текшерүүнү күткөн жарнамалар калбады.</p></div>`;
     } else {
         container.innerHTML = html;
     }
@@ -252,113 +250,88 @@ window.switchCategory = function(category) {
     renderCurrentTab();
 };
 
-// 1. ЖАҢЫ VIP ЖАРНАМАГА УРУКСАТ БЕРҮҮ
-window.approveNewVipFromVipAds = async function(vipDocId) {
+// СИЗ ИШТЕТКЕН МӨӨНӨТ ТЕКШЕРҮҮ ЖАНА УЗАРТУУ ЛОГИКАСЫ
+window.approveAd = async function(requestId, adId, extraDays, sourceCol) {
     try {
-        const itemRef = doc(db, "vip_ads", vipDocId);
-        const itemSnap = await getDoc(itemRef);
-
-        if (!itemSnap.exists()) {
-            alert("Сурам табылган жок!");
-            return;
-        }
-
-        const data = itemSnap.data();
-        const days = Number(data.requestedDays || data.vipDays || data.days || 1);
-        const expiresAt = Date.now() + (days * 24 * 60 * 60 * 1000);
-
-        await updateDoc(itemRef, {
-            status: "active",
-            isVip: true,
-            expiresAt: expiresAt
-        });
-
-        const newAdRef = doc(db, "ads", vipDocId);
-        await setDoc(newAdRef, {
-            ...data,
-            isVip: true,
-            type: "vip",
-            expiresAt: expiresAt,
-            status: "active",
-            createdAt: Date.now()
-        });
-
-        removeCardAnimation(vipDocId);
-    } catch (e) {
-        alert("Ката: " + e.message);
-    }
-};
-
-// 2. VIP МӨӨНӨТҮН УЗАРТУУ (АКЫЛДУУ ОҢДОЛДУ)
-window.approveExtendVipFromRequests = async function(requestId) {
-    try {
-        const reqRef = doc(db, "vip_requests", requestId);
-        const reqSnap = await getDoc(reqRef);
-
-        if (!reqSnap.exists()) {
-            alert("Узартуу сурамы табылган жок!");
-            return;
-        }
-
-        const reqData = reqSnap.data();
-        const extraDays = Number(reqData.requestedDays || reqData.vipDays || reqData.days || 1);
-        const addedMs = extraDays * 24 * 60 * 60 * 1000;
         const nowMs = Date.now();
+        const addedMs = Number(extraDays || 0) * 24 * 60 * 60 * 1000;
+        const targetAdId = (adId && adId !== 'undefined') ? adId : requestId;
 
-        // Документтен негизги жарнаманын IDсин издөө
-        const targetAdId = reqData.adId || reqData.targetAdId || reqData.postDocId || reqData.ad_id || requestId;
+        // 1. Алгач негизги 'ads' базасынан же 'vip_ads' коллекциясынан маалыматты текшерүү
+        let adRef = doc(db, "ads", targetAdId);
+        let adSnap = await getDoc(adRef);
 
-        const adRef = doc(db, "ads", targetAdId);
-        const adSnap = await getDoc(adRef);
+        let sourceData = {};
 
         if (adSnap.exists()) {
-            // Эгер негизги базада бар болсо - узартабыз
-            const adData = adSnap.data();
-            let currentExpireMs = adData.expiresAt?.toMillis ? adData.expiresAt.toMillis() : (typeof adData.expiresAt === 'number' ? adData.expiresAt : 0);
-            const baseTime = currentExpireMs > nowMs ? currentExpireMs : nowMs;
-            const finalExpiresAt = baseTime + addedMs;
-
-            await updateDoc(adRef, {
-                isVip: true,
-                type: "vip",
-                expiresAt: finalExpiresAt,
-                status: "active"
-            });
+            sourceData = adSnap.data();
         } else {
-            // Эгерads базасында жок болсо, ката чыгарбай vip_requests маалыматын ads базасына сактап узартабыз
-            await setDoc(adRef, {
-                ...reqData,
-                isVip: true,
-                type: "vip",
-                expiresAt: nowMs + addedMs,
-                status: "active",
-                createdAt: nowMs
-            });
+            // Эгер ads ичинде жок болсо, vip_ads ичинен издейбиз
+            const vipRef = doc(db, "vip_ads", requestId);
+            const vipSnap = await getDoc(vipRef);
+            if (vipSnap.exists()) {
+                sourceData = vipSnap.data();
+            } else {
+                // Эгер анда да жок болсо, vip_requests ичинен алабыз
+                const reqRef = doc(db, "vip_requests", requestId);
+                const reqSnap = await getDoc(reqRef);
+                if (reqSnap.exists()) sourceData = reqSnap.data();
+            }
         }
 
-        // vip_requests сурамын өчүрүү
-        await deleteDoc(reqRef);
+        // Эски кодуңуздагы убакыт эсептөө логикасы
+        let currentExpireMs = 0;
+        if (sourceData.expiresAt?.toMillis) {
+            currentExpireMs = sourceData.expiresAt.toMillis();
+        } else if (typeof sourceData.expiresAt === 'number') {
+            currentExpireMs = sourceData.expiresAt;
+        }
+
+        // Эгер мөөнөтү али бүтө элек болсо (currentExpireMs > nowMs),
+        // калган убакытка жаңы күндү кошобуз. Бүтүп калган болсо, азыркы убакытка кошобуз.
+        const baseTime = currentExpireMs > nowMs ? currentExpireMs : nowMs;
+        const finalExpiresAt = baseTime + addedMs;
+
+        // 2. Негизги 'ads' коллекциясына VIP катары активдештирип сактоо
+        await setDoc(adRef, { 
+            ...sourceData,
+            isVip: true,
+            type: "vip",
+            expiresAt: finalExpiresAt,
+            status: "active",
+            updatedAt: nowMs
+        }, { merge: true });
+
+        // 3. Уруксат берилген сурамдарды убактылуу коллекциялардан тазалоо
+        if (sourceCol === "vip_requests") {
+            await deleteDoc(doc(db, "vip_requests", requestId));
+        } else if (sourceCol === "vip_ads") {
+            await deleteDoc(doc(db, "vip_ads", requestId));
+        }
+
         removeCardAnimation(requestId);
 
     } catch (e) {
-        alert("Узартууда ката чыкты: " + e.message);
+        console.error("Ырастоодо ката:", e);
+        alert("Ырастоодо ката кетти: " + e.message);
     }
 };
 
-// ӨЧҮРҮҮ
-window.removeItem = async function(docId, colName) {
-    if (confirm("Чын эле өчүрүүнү каалайсызбы?")) {
+// Жарнаманы четке кагуу же өчүрүү
+window.rejectAd = async function(requestId, sourceCol) {
+    if (confirm("Бул жарнаманы өчүргүңүз келеби?")) {
         try {
-            await deleteDoc(doc(db, colName, docId));
-            removeCardAnimation(docId);
-        } catch(e) {
-            alert("Ката: " + e.message);
+            const targetCol = sourceCol || "vip_requests";
+            await deleteDoc(doc(db, targetCol, requestId));
+            removeCardAnimation(requestId);
+        } catch (e) {
+            alert("Ката кетти: " + e.message);
         }
     }
 };
 
-function removeCardAnimation(docId) {
-    const card = document.getElementById(`card-${docId}`);
+function removeCardAnimation(requestId) {
+    const card = document.getElementById(`card-${requestId}`);
     if (card) {
         card.style.transition = 'all 0.3s ease';
         card.style.transform = 'scale(0.9)';
@@ -368,4 +341,3 @@ function removeCardAnimation(docId) {
 }
 
 listenToAllData();
-                
