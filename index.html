@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Toktogul Reklama | Bento Glass Modal</title>
+    <title>Toktogul Reklama | Bento Glass Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-       <div class="bento-wrapper">
+    <div class="bento-wrapper">
         <!-- Bento Header Component -->
         <div class="bento-header">
             <div class="bento-card brand-box">
@@ -23,8 +23,8 @@
 
             <div class="bento-controls-row">
                 <div class="bento-card stat-pill">
-                    <span>Күтүүдө</span>
-                    <span id="counter-badge">...</span>
+                    <span>Бардыгы</span>
+                    <span id="counter-badge">0</span>
                 </div>
                 <!-- Компакттуу узун тумблер -->
                 <div class="toggle" id="toggle">
@@ -33,6 +33,16 @@
                     <span class="toggle-text text-dark" id="mode-dark">Караңгы</span>
                 </div>
             </div>
+        </div>
+
+        <!-- VIP / Жөнөкөй Горизонтальный Меню (Tabs) -->
+        <div class="bento-card bento-nav-tabs">
+            <button class="nav-tab active" id="tab-vip" onclick="switchCategory('vip')">
+                <i class="fa-solid fa-crown" style="color: #eab308;"></i> VIP Жарнамалар
+            </button>
+            <button class="nav-tab" id="tab-normal" onclick="switchCategory('normal')">
+                <i class="fa-solid fa-list-ul"></i> Жөнөкөй Жарнамалар
+            </button>
         </div>
 
         <!-- Bento Dynamic Feed Container -->
@@ -54,4 +64,5 @@
   
     <script type="module" src="script.js"></script>
 </body>
-</html>
+    </html>
+    
