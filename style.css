@@ -148,7 +148,7 @@ body {
     border-radius: 6px;
 }
 
-/* ЖАРНАМАЛАР (АЙНЕК СТИЛДЕГИ ТҮРДҮҮ ТҮСТҮҮ КАРТОЧКАЛАР) */
+/* ЖАРНАМАЛАР */
 #ads-container {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -180,7 +180,6 @@ body {
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
 }
 
-/* Карточкалардын оң жагындагы түстүү тилкелер (Сүрөттөгүдөй айланма түстөр) */
 .ad-item::after {
     content: counter(card-counter);
     counter-increment: card-counter;
@@ -201,16 +200,15 @@ body {
     box-shadow: inset 1px 0 2px rgba(255, 255, 255, 0.4);
 }
 
-/* Ар бир карточканын оң жактагы тилкесинин өз түсү (1ден 9га чейин) */
-.ad-item:nth-child(9n+1)::after { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); } /* Сары */
-.ad-item:nth-child(9n+2)::after { background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%); } /* Кызыл/Кызгылт сары */
-.ad-item:nth-child(9n+3)::after { background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%); } /* Боз */
-.ad-item:nth-child(9n+4)::after { background: linear-gradient(135deg, #34d399 0%, #059669 100%); } /* Жашыл */
-.ad-item:nth-child(9n+5)::after { background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); } /* Көгүлтүр */
-.ad-item:nth-child(9n+6)::after { background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%); } /* Көк */
-.ad-item:nth-child(9n+7)::after { background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%); } /* Фиолет */
-.ad-item:nth-child(9n+8)::after { background: linear-gradient(135deg, #c084fc 0%, #9333ea 100%); } /* Ачык фиолет */
-.ad-item:nth-child(9n+0)::after { background: linear-gradient(135deg, #f472b6 0%, #db2777 100%); } /* Кызгылт */
+.ad-item:nth-child(9n+1)::after { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
+.ad-item:nth-child(9n+2)::after { background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%); }
+.ad-item:nth-child(9n+3)::after { background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%); }
+.ad-item:nth-child(9n+4)::after { background: linear-gradient(135deg, #34d399 0%, #059669 100%); }
+.ad-item:nth-child(9n+5)::after { background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); }
+.ad-item:nth-child(9n+6)::after { background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%); }
+.ad-item:nth-child(9n+7)::after { background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%); }
+.ad-item:nth-child(9n+8)::after { background: linear-gradient(135deg, #c084fc 0%, #9333ea 100%); }
+.ad-item:nth-child(9n+0)::after { background: linear-gradient(135deg, #f472b6 0%, #db2777 100%); }
 
 .card-delete-icon-btn {
     position: absolute;
@@ -335,7 +333,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
-/* ===== GLASSMORPHISM МЕНЮ СТИЛДЕРИ ===== */
+/* ===== GLASSMORPHISM МЕНЮ ===== */
 .bottom-dock {
     position: fixed;
     bottom: 20px;
@@ -448,7 +446,8 @@ body {
     margin-top: 1px;
     color: #ffffff;
 }
-.fa-solid{
+
+.fa-solid {
     font-size: 10px;
 }
 
@@ -507,99 +506,72 @@ body {
 }
 
 /* =========================================================
-   ПК МЕНЕН КЕҢ ЭКРАНДАР ҮЧҮН МЕДИА СТИЛДЕР (RESPONSIVE PC)
+   ПК ЭКРАНДАРЫ ҮЧҮН ОПТИМИЗАЦИЯЛАНГАН МЕДИА СТИЛДЕР
    ========================================================= */
 
 @media screen and (min-width: 768px) {
-    /* 1. Эгер сайтты ПКда толук экранга жайгыңыз келсе max-width ти чоңойтобуз (мисалы 1200px) */
     .app-wrapper {
-        max-width: 1200px;
-        margin: 0 auto;
+        max-width: 960px;
+        margin: 20px auto 0 auto;
     }
 
     body {
-        padding-bottom: 40px; /* ПКда төмөнкү padding'ди азайтабыз */
+        padding-bottom: 100px;
     }
 
-    /* 2. Хедерди жана Статистиканы ПКга ылайыкташтыруу */
     .header-block {
         border-radius: 16px 16px 0 0;
-        padding: 18px 24px;
-        margin-top: 20px;
+        padding: 16px 20px;
     }
 
     .header-title-box h1 {
-        font-size: 20px;
-    }
-
-    .header-title-box p {
-        font-size: 12px;
+        font-size: 18px;
     }
 
     .search-container.active input {
-        width: 250px; /* Издөө киргизүү тилкеси ПКда кеңирирээк болот */
+        width: 220px;
     }
 
-    .stat-block {
-        padding: 14px 24px;
-    }
-
-    .stat-block .label {
-        font-size: 13px;
-    }
-
-    /* 3. Жарнама карточкаларын ПКда 3 же 4 тилкеге (column) бөлүү */
     #ads-container {
-        grid-template-columns: repeat(3, 1fr); /* Стандарт ПКда 3 тилке */
-        gap: 20px;
-        padding: 20px 0;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        padding: 16px 0;
     }
 
-    /* Карточкалардын ичиндеги элементтерди да чоңойтуу */
     .ad-item {
-        border-radius: 24px;
-        padding: 16px 48px 16px 16px;
+        border-radius: 20px;
+        padding: 14px 44px 14px 14px;
     }
 
     .ad-title {
-        font-size: 13px;
-    }
-
-    .ad-meta {
-        font-size: 11px;
+        font-size: 12px;
     }
 
     .ad-thumb {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
     }
 
     .der-btn {
-        height: 36px;
+        height: 32px;
         font-size: 11px;
     }
 
-    /* 4. Glassmorphism Төмөнкү Менюну ПКда жогоруга же ыңгайлуу орунга багыттоо */
     .bottom-dock {
-        position: sticky;
-        top: 20px;
-        bottom: auto;
-        transform: none;
-        left: auto;
-        margin-bottom: 20px;
-        justify-content: flex-end; /* Менюну оң жакка же ортого койсо болот */
+        bottom: 24px;
     }
 
     .nav-container {
-        width: 380px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08),
-                    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+        width: 360px;
     }
 }
 
-/* Монитор аябай чоң ПКлар үчүн (Ultra-wide же Large Desktops >= 1200px) */
 @media screen and (min-width: 1200px) {
+    .app-wrapper {
+        max-width: 1200px;
+    }
+
     #ads-container {
-        grid-template-columns: repeat(4, 1fr); /* 4 тилкелик карточкалар */
+        grid-template-columns: repeat(4, 1fr);
     }
 }
