@@ -505,3 +505,101 @@ body {
     align-items: center;
     justify-content: center;
 }
+
+/* =========================================================
+   ПК МЕНЕН КЕҢ ЭКРАНДАР ҮЧҮН МЕДИА СТИЛДЕР (RESPONSIVE PC)
+   ========================================================= */
+
+@media screen and (min-width: 768px) {
+    /* 1. Эгер сайтты ПКда толук экранга жайгыңыз келсе max-width ти чоңойтобуз (мисалы 1200px) */
+    .app-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    body {
+        padding-bottom: 40px; /* ПКда төмөнкү padding'ди азайтабыз */
+    }
+
+    /* 2. Хедерди жана Статистиканы ПКга ылайыкташтыруу */
+    .header-block {
+        border-radius: 16px 16px 0 0;
+        padding: 18px 24px;
+        margin-top: 20px;
+    }
+
+    .header-title-box h1 {
+        font-size: 20px;
+    }
+
+    .header-title-box p {
+        font-size: 12px;
+    }
+
+    .search-container.active input {
+        width: 250px; /* Издөө киргизүү тилкеси ПКда кеңирирээк болот */
+    }
+
+    .stat-block {
+        padding: 14px 24px;
+    }
+
+    .stat-block .label {
+        font-size: 13px;
+    }
+
+    /* 3. Жарнама карточкаларын ПКда 3 же 4 тилкеге (column) бөлүү */
+    #ads-container {
+        grid-template-columns: repeat(3, 1fr); /* Стандарт ПКда 3 тилке */
+        gap: 20px;
+        padding: 20px 0;
+    }
+
+    /* Карточкалардын ичиндеги элементтерди да чоңойтуу */
+    .ad-item {
+        border-radius: 24px;
+        padding: 16px 48px 16px 16px;
+    }
+
+    .ad-title {
+        font-size: 13px;
+    }
+
+    .ad-meta {
+        font-size: 11px;
+    }
+
+    .ad-thumb {
+        width: 44px;
+        height: 44px;
+    }
+
+    .der-btn {
+        height: 36px;
+        font-size: 11px;
+    }
+
+    /* 4. Glassmorphism Төмөнкү Менюну ПКда жогоруга же ыңгайлуу орунга багыттоо */
+    .bottom-dock {
+        position: sticky;
+        top: 20px;
+        bottom: auto;
+        transform: none;
+        left: auto;
+        margin-bottom: 20px;
+        justify-content: flex-end; /* Менюну оң жакка же ортого койсо болот */
+    }
+
+    .nav-container {
+        width: 380px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08),
+                    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+    }
+}
+
+/* Монитор аябай чоң ПКлар үчүн (Ultra-wide же Large Desktops >= 1200px) */
+@media screen and (min-width: 1200px) {
+    #ads-container {
+        grid-template-columns: repeat(4, 1fr); /* 4 тилкелик карточкалар */
+    }
+}
